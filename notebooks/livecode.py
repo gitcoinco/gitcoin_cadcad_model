@@ -117,17 +117,32 @@ g_map = {
     'json_created_on': lambda df: df.json_created_on.astype(int)
 }
 
-r_map = {col: col.replace("_", "") for col in g_df.columns if "_" in col}
+r_map = {col: col.replace("_", "") for col in df.columns if "_" in col}
 
 g_df = (df.assign(**g_map)
         .rename(columns=r_map)
-        .drop(columns=['txid']))
+        .drop(columns=['txid'])
+        .dropna()
+        )
 
 G = nx.from_pandas_edgelist(g_df,
                             source="profileforclrid",
                             target="title",
                             edge_attr=True,
                             create_using=nx.MultiDiGraph)
+
+titles = g_df.title.unique()
+for node in G.nodes:
+    if node in titles:
+        kind = 'grant'
+    else:
+        kind = 'contributor'
+    G.nodes[node]['kind'] = kind
+
+deg = nx.degree(G)
+to_remove = [k for k, v in deg if v > 500]
+G.remove_nodes_from(to_remove)
+
 
 nx.write_gml(G, 'graph.gml')
 
