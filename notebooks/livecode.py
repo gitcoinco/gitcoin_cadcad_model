@@ -144,6 +144,6 @@ to_remove = [k for k, v in deg if v > 500]
 G.remove_nodes_from(to_remove)
 
 
-nx.write_gml(G, 'graph.gml')
+nx.write_gml(G, '../data/graph.gml')
 
 # %%
