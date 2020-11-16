@@ -6,7 +6,6 @@
 
 # Magic for getting the execution time for each cell
 import plotly.express as px
-# Power laws are probability distributions with the form:p(x)∝x−α
 import powerlaw
 import matplotlib.pyplot as plt
 import networkx as nx
