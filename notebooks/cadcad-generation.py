@@ -10,13 +10,53 @@ from cadCAD.engine import Executor, ExecutionMode, ExecutionContext
 import networkx as nx
 import pandas as pd
 import numpy as np
+import json
 from typing import List, Tuple, Dict
 
 # %%
-EDGE_PER_TIMESTEP: Dict[int, Tuple[str, str]] = {1: (0, 1),
-                                                 2: (0, 2),
-                                                 3: (1, 5)}
+def load_edges() -> dict:
+    DATA_PATH = "../data/query_result_2020-10-12T20_42_24.031Z.csv"
+    raw_df = pd.read_csv(DATA_PATH)
 
+    # Parse the normalized data strings into dictionaries
+    json_data: dict = raw_df.normalized_data.map(json.loads)
+
+
+    # Create a data frame from the normalized data parsed series
+    col_map = {
+        "id": "json_id",
+        "created_on": "json_created_on",
+        "tx_id": "json_tx_id"
+    }
+    json_df = pd.DataFrame(json_data.tolist()).rename(columns=col_map)
+
+    # Assign columns from JSON into the main dataframe
+    # plus clean-up
+    sanitize_map = {
+        "created_on": lambda df: pd.to_datetime(df.created_on),
+        "modified_on": lambda df: pd.to_datetime(df.modified_on),
+        "json_created_on": lambda df: pd.to_datetime(df.json_created_on),
+    }
+
+    drop_cols = ["normalized_data"]
+
+    # Filter GC grants round & GC bot
+    QUERY = 'title != "Gitcoin Grants Round 8 + Dev Fund"'
+    QUERY += ' | '
+    QUERY += 'profile_for_clr_id != 2853'
+    df = (raw_df.join(json_df)
+                .assign(**sanitize_map)
+                .drop(columns=drop_cols)
+                .query(QUERY))
+
+    # Sort df and return dict
+    sorted_df = df.sort_values('created_on').head(100)
+    timesteps = range(len(sorted_df))
+    src = sorted_df.profile_for_clr_id.values
+    dst = sorted_df.title.values
+    return {i + 1: (src[i], dst[i]) for i in timesteps}
+
+EDGE_PER_TIMESTEP = load_edges()
 
 genesis_states = {
     'network': nx.Graph()
@@ -24,7 +64,7 @@ genesis_states = {
 
 
 sys_params = {
-    'edge_per_timestep': [EDGE_PER_TIMESTEP, EDGE_PER_TIMESTEP.copy()]
+    'edge_per_timestep': [EDGE_PER_TIMESTEP]
 }
 
 
@@ -43,12 +83,9 @@ partial_state_update_blocks = [
     {
         'label': 'Append new edges to the network',
         'policies': {
-            'test': None
-
         },
         'variables': {
             'network': s_append_edges
-
         }
     }
 ]
@@ -101,13 +138,5 @@ def run(input_config):
 
 from cadCAD import configs
 result = run(configs)
-
-# %%
-configs[1].sim_config['M']['edge_per_timestep']
-# %%
-result
-# %%
-result.query('timestep == 2 & subset == 0').reset_index().network[0].edges
-# %%
 
 # %%
