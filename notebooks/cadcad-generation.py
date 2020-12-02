@@ -18,8 +18,14 @@ from collections import defaultdict
 
 # %%
 
+LIMIT_SEQUENCE = 400 # pass None to get everything
 
-def load_edges() -> dict:
+
+def load_contributions_sequence() -> dict:
+    """
+    Returns a dict that represents a event sequence of contributions containing
+    the grant, collaborator and amount as key-values.
+    """
     DATA_PATH = "../data/query_result_2020-10-12T20_42_24.031Z.csv"
     raw_df = pd.read_csv(DATA_PATH)
 
@@ -54,85 +60,152 @@ def load_edges() -> dict:
                 .query(QUERY))
 
     # Sort df and return dict
-    sorted_df = df.sort_values('created_on').head(100)
-    timesteps = range(len(sorted_df))
-    src = sorted_df.profile_for_clr_id.values
-    dst = sorted_df.title.values
-    return {i + 1: (src[i], dst[i]) for i in timesteps}
+    sorted_df = df.sort_values('created_on')
+
+    if LIMIT_SEQUENCE is not None:
+        sorted_df = sorted_df.head(LIMIT_SEQUENCE)
+
+    event_property_map = {'profile_for_clr_id': 'contributor',
+                          'title': 'grant',
+                          'amount_per_period_usdt': 'amount'}
+
+    event_sequence = (sorted_df.rename(columns=event_property_map)
+                      .loc[:, event_property_map.values()]
+                      .reset_index(drop=True)
+                      .to_dict(orient='index')
+                      )
+
+    return event_sequence
 
 
-EDGE_PER_TIMESTEP: dict = load_edges()
+# %%
 
-unique_users = set(src for (src, dst) in EDGE_PER_TIMESTEP.values()) 
-unique_grants = set(dst for (src, dst) in EDGE_PER_TIMESTEP.values())
-N_users = len(unique_users)
-N_grants = len(unique_grants)
+CONTRIBUTIONS_SEQUENCE: dict = load_contributions_sequence()
 
 genesis_states = {
     'network': nx.DiGraph(),
-    'pair_totals': defaultdict(lambda: defaultdict(0.0)),
-    'user_totals': defaultdict(0.0),
-    'total_pot': 0.0,
-    'quadratic_match': defaultdict(0.0)
+    'contributions': [],
+    # (N_user, N_user)
+    'pair_totals': defaultdict(lambda: defaultdict(lambda: 0.0)),
+    'quadratic_match': defaultdict(lambda: 0.0),  # (N_grant)
+    'quadratic_funding_per_grant': defaultdict(lambda: 0.0),
+    'quadratic_match_per_grant': defaultdict(lambda: 0.0),
+    'quadratic_total_match': 0.0,
+    'quadratic_total_funding': 0.0,
 }
 
 
 sys_params = {
-    'edge_per_timestep': [EDGE_PER_TIMESTEP],
-    'trust_per_user': [None],
-    'v_threshold': None,
+    'contribution_sequence': [CONTRIBUTIONS_SEQUENCE],
+    'trust_bonus_per_user': [defaultdict(lambda: 1.0)],
+    'v_threshold': [0.3],
+    'total_pot': [5000]
 }
 
 
 def p_new_contribution(params, substep, state_history, prev_state):
-    timestep: int = len(state_history)
-    timestep_edge: tuple = params['edge_per_timestep'][timestep]
+    timestep: int = prev_state['timestep']
+    new_contribution: tuple = params['contribution_sequence'][timestep]
+    return {'new_contribution': new_contribution}
 
-    new_contribution = {'amount': None,
-                        'contributor': timestep_edge[0],
-                        'grant': timestep[1]}
-    new_contributions = [new_contribution]
-    return {'new_contributions': []}
+
+def s_append_contribution(params, substep, state_history, prev_state, policy_input):
+    contributions = prev_state['contributions'].copy()
+    contributions.append(policy_input.get('new_contribution'))
+    return ('contributions', contributions)
 
 
 def s_append_edges(params, substep, state_history, prev_state, policy_input):
     # Dependences
     G = prev_state['network'].copy()
-    for contribution in policy_input['new_contributions']:
-        G.add_edge(contribution['contributor'], contribution['grant'])
+    contribution = policy_input['new_contribution']
+    G.add_edge(contribution['contributor'], contribution['grant'])
     return ('network', G)
 
 
 def s_pair_totals(params, substep, state_history, prev_state, policy_input):
-    pair_totals = prev_state['pair_totals']
-    for contribution in policy_input['new_contributions']:
-        pass
-    return ('pair_totals', None)
+    # Dependences
+    pair_totals = prev_state['pair_totals'].copy()
+    contributions = prev_state['contributions']
+    new_contribution = policy_input['new_contribution']
+
+    new_amount = new_contribution['amount']
+    new_user = new_contribution['contributor']
+
+    # Logic
+    for c in contributions:
+        (i, j) = sorted([new_user, c['contributor']])
+        pair_totals[i][j] += np.lib.scimath.sqrt(new_amount * c['amount'])
+    return ('pair_totals', pair_totals)
 
 
-def s_total_pot(params, substep, state_history, prev_state, policy_input):
-    pass
-
-
-def s_quadratic_match(params, substep, state_history, prev_state, policy_input):
+def p_quadratic_match(params, substep, state_history, prev_state):
+    k = params['v_threshold']
     total_pot = params['total_pot']
+    T = params['trust_bonus_per_user']
+    pair_totals = prev_state['pair_totals']
+    contributions = prev_state['contributions']
 
-    total_match = None
+    grants = {c['grant'] for c in contributions}
+    M = defaultdict(lambda: 0.0)
 
-    quadratic_match = {}
     for grant in grants:
+        grant_contributions = [c
+                               for c in contributions
+                               if c['grant'] == grant]
+        for (i, c_i) in enumerate(grant_contributions):
+            v_i = c_i['amount']
+            u_i = c_i['contributor']
+            for (j, c_j) in enumerate(grant_contributions):
+                v_j = c_j['amount']
+                u_j = c_j['contributor']
+                if i > j:
+                    (u_i, u_j) = sorted([u_i, u_j])
+                    trust_bonus = max([T[u_i], T[u_j]])
+                    cross_contribution = np.lib.scimath.sqrt(max(v_i * v_j, 0))
+                    user_covariance = 1 + pair_totals[u_i][u_j]
+                    partial_match = trust_bonus * cross_contribution
+                    partial_match *= k
+                    partial_match /= user_covariance
+                    M[grant] += partial_match
+
+                else:
+                    continue
+
+    total_match = sum(M.values())
+    F = {}
+    if total_match > total_pot:
+        F = {g: total_pot * M[g] / total_match
+             for g in grants}
+    else:
+        if total_match == 0:
+            total_match = 1.0
+        F = {g: M[g] + (1 + np.log(total_pot / total_match) / 100)
+            for g in grants}
+
+    
+    return {'quadratic_match_per_grant': M,
+            'quadratic_funding_per_grant': F}
 
 
+def s_quadratic_match_per_grant(params, substep, state_history, prev_state, policy_input):
+    M = policy_input['quadratic_match_per_grant']
+    return ('quadratic_match_per_grant', M)
 
-        if total_match > total_pot:
-            grant_funding = total_pot * grant_match / total_match
-        else:
-            grant_funding = grant_match
-            grant_funding *= (1 + np.log(total_pot / total_match) / 100)
-        quadratic_match[grant] = grant_funding
 
-    return ('quadratic_match', quadratic_match)
+def s_quadratic_funding_per_grant(params, substep, state_history, prev_state, policy_input):
+    F = policy_input['quadratic_funding_per_grant']
+    return ('quadratic_funding_per_grant', F)
 
+
+def s_quadratic_total_match(params, substep, state_history, prev_state, policy_input):
+    M = policy_input['quadratic_match_per_grant']
+    return ('quadratic_total_match', sum(M.values()))
+
+
+def s_quadratic_total_funding(params, substep, state_history, prev_state, policy_input):
+    F = policy_input['quadratic_funding_per_grant']
+    return ('quadratic_total_funding', sum(F.values()))
 
 partial_state_update_blocks = [
     {
@@ -141,25 +214,30 @@ partial_state_update_blocks = [
             'new_contribution': p_new_contribution
         },
         'variables': {
-            'network': s_append_edges,
+            #'network': s_append_edges,
             'pair_totals': s_pair_totals,
+            'contributions': s_append_contribution
         },
     },
     {
-        'label': 'Funding mechanisms',
+        'label': 'Quadratic Funding',
         'policies': {
-
+            'quadratic_match': p_quadratic_match
         },
         'variables': {
-            'quadratic_match': s_quadratic_match
+            #'quadratic_match_per_grant': s_quadratic_match_per_grant,
+            #'quadratic_funding_per_grant': s_quadratic_funding_per_grant,
+            'quadratic_total_funding': s_quadratic_total_funding,
+            'quadratic_total_match': s_quadratic_total_match
+            
         }
-    }
+    },
 ]
 
 
 sim_params = {
     'N': 1,
-    'T': range(len(EDGE_PER_TIMESTEP)),
+    'T': range(len(CONTRIBUTIONS_SEQUENCE)),
     'M': sys_params
 }
 
@@ -204,12 +282,5 @@ def run(input_config):
 
 
 result = run(configs)
-
-# %%
-nx.draw(result.reset_index().iloc[0].network)
-# %%
-nx.draw(result.reset_index().iloc[10].network)
-# %%
-nx.draw(result.reset_index().iloc[-1].network)
 
 # %%
