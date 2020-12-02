@@ -17,8 +17,29 @@ from typing import List, Tuple, Dict
 from collections import defaultdict
 
 # %%
+from time import time
+import logging
+from functools import wraps
+logging.basicConfig(level=logging.DEBUG)
 
-LIMIT_SEQUENCE = 400 # pass None to get everything
+def print_time(f):
+  """
+
+  """
+  @wraps(f)
+  def wrapper(*args, **kwargs):
+      # Current timestep
+      t = len(args[2])
+      t1 = time()
+      f_out = f(*args, **kwargs)
+      t2 = time()
+      text = f"{t}|{f.__name__}  (exec time: {t2 - t1:.2f}s)"
+      logging.debug(text)
+      return f_out
+  return wrapper
+# %%
+
+LIMIT_SEQUENCE = 500 # pass None to get everything
 
 
 def load_contributions_sequence() -> dict:
@@ -138,7 +159,7 @@ def s_pair_totals(params, substep, state_history, prev_state, policy_input):
         pair_totals[i][j] += np.lib.scimath.sqrt(new_amount * c['amount'])
     return ('pair_totals', pair_totals)
 
-
+@print_time
 def p_quadratic_match(params, substep, state_history, prev_state):
     k = params['v_threshold']
     total_pot = params['total_pot']
