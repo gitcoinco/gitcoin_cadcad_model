@@ -4,6 +4,8 @@
 #
 
 # %%
+import numpy as np
+from cadCAD import configs
 from cadCAD.configuration.utils import bound_norm_random, ep_time_step, config_sim, access_block
 from cadCAD.configuration import Experiment
 from cadCAD.engine import Executor, ExecutionMode, ExecutionContext
@@ -12,15 +14,17 @@ import pandas as pd
 import numpy as np
 import json
 from typing import List, Tuple, Dict
+from collections import defaultdict
 
 # %%
+
+
 def load_edges() -> dict:
     DATA_PATH = "../data/query_result_2020-10-12T20_42_24.031Z.csv"
     raw_df = pd.read_csv(DATA_PATH)
 
     # Parse the normalized data strings into dictionaries
     json_data: dict = raw_df.normalized_data.map(json.loads)
-
 
     # Create a data frame from the normalized data parsed series
     col_map = {
@@ -56,36 +60,98 @@ def load_edges() -> dict:
     dst = sorted_df.title.values
     return {i + 1: (src[i], dst[i]) for i in timesteps}
 
-EDGE_PER_TIMESTEP = load_edges()
+
+EDGE_PER_TIMESTEP: dict = load_edges()
+
+unique_users = set(src for (src, dst) in EDGE_PER_TIMESTEP.values()) 
+unique_grants = set(dst for (src, dst) in EDGE_PER_TIMESTEP.values())
+N_users = len(unique_users)
+N_grants = len(unique_grants)
 
 genesis_states = {
-    'network': nx.Graph()
+    'network': nx.DiGraph(),
+    'pair_totals': defaultdict(lambda: defaultdict(0.0)),
+    'user_totals': defaultdict(0.0),
+    'total_pot': 0.0,
+    'quadratic_match': defaultdict(0.0)
 }
 
 
 sys_params = {
-    'edge_per_timestep': [EDGE_PER_TIMESTEP]
+    'edge_per_timestep': [EDGE_PER_TIMESTEP],
+    'trust_per_user': [None],
+    'v_threshold': None,
 }
+
+
+def p_new_contribution(params, substep, state_history, prev_state):
+    timestep: int = len(state_history)
+    timestep_edge: tuple = params['edge_per_timestep'][timestep]
+
+    new_contribution = {'amount': None,
+                        'contributor': timestep_edge[0],
+                        'grant': timestep[1]}
+    new_contributions = [new_contribution]
+    return {'new_contributions': []}
 
 
 def s_append_edges(params, substep, state_history, prev_state, policy_input):
     # Dependences
-    timestep: int = len(state_history)
-    timestep_edge: tuple = params['edge_per_timestep'][timestep]
     G = prev_state['network'].copy()
-
-    # SUF logic
-    G.add_edge(*timestep_edge)
+    for contribution in policy_input['new_contributions']:
+        G.add_edge(contribution['contributor'], contribution['grant'])
     return ('network', G)
+
+
+def s_pair_totals(params, substep, state_history, prev_state, policy_input):
+    pair_totals = prev_state['pair_totals']
+    for contribution in policy_input['new_contributions']:
+        pass
+    return ('pair_totals', None)
+
+
+def s_total_pot(params, substep, state_history, prev_state, policy_input):
+    pass
+
+
+def s_quadratic_match(params, substep, state_history, prev_state, policy_input):
+    total_pot = params['total_pot']
+
+    total_match = None
+
+    quadratic_match = {}
+    for grant in grants:
+
+
+
+        if total_match > total_pot:
+            grant_funding = total_pot * grant_match / total_match
+        else:
+            grant_funding = grant_match
+            grant_funding *= (1 + np.log(total_pot / total_match) / 100)
+        quadratic_match[grant] = grant_funding
+
+    return ('quadratic_match', quadratic_match)
 
 
 partial_state_update_blocks = [
     {
         'label': 'Append new edges to the network',
         'policies': {
+            'new_contribution': p_new_contribution
         },
         'variables': {
-            'network': s_append_edges
+            'network': s_append_edges,
+            'pair_totals': s_pair_totals,
+        },
+    },
+    {
+        'label': 'Funding mechanisms',
+        'policies': {
+
+        },
+        'variables': {
+            'quadratic_match': s_quadratic_match
         }
     }
 ]
@@ -136,7 +202,14 @@ def run(input_config):
     df = df.set_index(['simulation', 'subset', 'run', 'timestep'])
     return df
 
-from cadCAD import configs
+
 result = run(configs)
+
+# %%
+nx.draw(result.reset_index().iloc[0].network)
+# %%
+nx.draw(result.reset_index().iloc[10].network)
+# %%
+nx.draw(result.reset_index().iloc[-1].network)
 
 # %%

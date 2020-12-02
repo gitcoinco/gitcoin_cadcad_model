@@ -193,5 +193,4 @@ nx.draw(G, pos, **options)
 fig.set_facecolor('black')
 plt.show()
 
-
 # %%
