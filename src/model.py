@@ -1,89 +1,12 @@
-
-# %% [markdown]
-# # Generating Gitcoin Grants Network through cadCAD
-#
-
-# %%
-import matplotlib.pyplot as plt
-from collections import defaultdict
-from typing import List, Tuple, Dict
-import plotly.express as px
-import json
-import pandas as pd
-import networkx as nx
-from cadCAD.engine import Executor, ExecutionMode, ExecutionContext
-from cadCAD.configuration import Experiment
-from cadCAD.configuration.utils import bound_norm_random, ep_time_step, config_sim, access_block
-from cadCAD import configs
 import numpy as np
-(get_ipython().run_line_magic("load_ext", "autotime"))
+from cadCAD.engine import ExecutionContext, ExecutionMode, Executor
+from cadCAD.configuration.utils import config_sim
+from cadCAD.configuration import Experiment
+from collections import defaultdict
+import pandas as pd
+from typing import DefaultDict
+from src.utils import load_contributions_sequence
 
-
-# %%
-
-
-LIMIT_SEQUENCE = 1000  # pass None to get everything
-
-
-def load_contributions_sequence() -> dict:
-    """
-    Returns a dict that represents a event sequence of contributions containing
-    the grant, collaborator and amount as key-values.
-    """
-    DATA_PATH = "../data/query_result_2020-10-12T20_42_24.031Z.csv"
-    raw_df = pd.read_csv(DATA_PATH)
-
-    # Parse the normalized data strings into dictionaries
-    json_data: dict = raw_df.normalized_data.map(json.loads)
-
-    # Create a data frame from the normalized data parsed series
-    col_map = {
-        "id": "json_id",
-        "created_on": "json_created_on",
-        "tx_id": "json_tx_id"
-    }
-    json_df = pd.DataFrame(json_data.tolist()).rename(columns=col_map)
-
-    # Assign columns from JSON into the main dataframe
-    # plus clean-up
-    sanitize_map = {
-        "created_on": lambda df: pd.to_datetime(df.created_on),
-        "modified_on": lambda df: pd.to_datetime(df.modified_on),
-        "json_created_on": lambda df: pd.to_datetime(df.json_created_on),
-    }
-
-    drop_cols = ["normalized_data"]
-
-    # Filter GC grants round & GC bot
-    QUERY = 'title != "Gitcoin Grants Round 8 + Dev Fund"'
-    QUERY += ' | '
-    QUERY += 'profile_for_clr_id != 2853'
-    df = (raw_df.join(json_df)
-                .assign(**sanitize_map)
-                .drop(columns=drop_cols)
-                .query(QUERY))
-
-    # Sort df and return dict
-    sorted_df = df.sort_values('created_on')
-
-    if LIMIT_SEQUENCE is not None:
-        sorted_df = sorted_df.head(LIMIT_SEQUENCE)
-
-    event_property_map = {'profile_for_clr_id': 'contributor',
-                          'title': 'grant',
-                          'amount_per_period_usdt': 'amount',
-                          'sybil_score': 'sybil_score'}
-
-    event_sequence = (sorted_df.rename(columns=event_property_map)
-                      .loc[:, event_property_map.values()]
-                      .reset_index(drop=True)
-                      .to_dict(orient='index')
-                      )
-
-    return event_sequence
-
-
-# %%
 
 CONTRIBUTIONS_SEQUENCE: dict = load_contributions_sequence()
 
@@ -91,7 +14,7 @@ genesis_states = {
     # 'network': nx.DiGraph(),
     'contributions': [],
     # (N_user, N_user)
-    'pair_totals': defaultdict(lambda: defaultdict(lambda: 0.0)),
+    'pair_totals': defaultdict(lambda: DefaultDict(lambda: 0.0)),
     'quadratic_match': defaultdict(lambda: 0.0),  # (N_grant)
     'quadratic_funding_per_grant': defaultdict(lambda: 0.0),
     'quadratic_match_per_grant': defaultdict(lambda: 0.0),
@@ -104,11 +27,9 @@ sys_params = {
     'contribution_sequence': [CONTRIBUTIONS_SEQUENCE],
     'trust_bonus_per_user': [defaultdict(lambda: 1.0)],
     'v_threshold': [0.3],
-    'total_pot': [5000]
+    'total_pot': [450000]
 }
 
-
-# %%
 
 def aggregate_contributions(grant_contributions):
     contrib_dict = {}
@@ -292,89 +213,3 @@ def run(input_config):
     return df
 
 
-result = run(configs)
-
-# %%
-df = result.loc[(0, 0, 1, slice(None))]
-px.line(df.reset_index(),
-        x='timestep',
-        y=['quadratic_total_match', 'quadratic_total_funding'])
-
-
-# %%
-y = df.quadratic_total_funding / df.quadratic_total_match
-y.name = 'funding_per_match'
-px.line(y.reset_index(),
-        x='timestep',
-        y='funding_per_match',
-        log_y=True)
-# %%
-
-g_df = pd.DataFrame(df.contributions.iloc[-1])
-
-G = nx.from_pandas_edgelist(g_df,
-                            source='contributor',
-                            target='grant',
-                            edge_attr=True)
-
-profiles = {e[0] for e in G.edges}
-grants = {e[-1] for e in G.edges}
-
-grant_sizes = (g_df.groupby('grant')
-                 .amount
-                 .sum()
-                 .map(lambda x: x)
-                 .to_dict())
-
-collaborator_sizes = (g_df.groupby('contributor')
-                        .amount
-                        .sum()
-                        .map(lambda x: x)
-                        .to_dict())
-
-node_sizes = {**grant_sizes, **collaborator_sizes}
-nx.set_node_attributes(G, node_sizes, 'size')
-
-grant_color = (g_df.groupby('grant')
-               .sybil_score
-               .mean()
-               .to_dict())
-
-collaborator_color = (g_df.groupby('contributor')
-                      .sybil_score
-                      .mean()
-                      .to_dict())
-
-
-node_colors = {**grant_color, **collaborator_color}
-nx.set_node_attributes(G, node_colors, 'color')
-
-edge_weights = {n: v for n,
-                v in nx.get_edge_attributes(G, 'amount_per_period_usdt').items()}
-
-nx.set_edge_attributes(G, edge_weights, 'weight')
-dt = len(profiles) / len(grants)
-profile_pos = {node: (0, i) for (i, node) in enumerate(profiles)}
-grant_pos = {node: (1, i * dt) for (i, node) in enumerate(grants)}
-pos = {**profile_pos, **grant_pos}
-labels = {node: node for node in profiles | grants}
-
-
-options = {
-    "node_color": list(nx.get_node_attributes(G, 'color').values()),
-    "node_size": list(nx.get_node_attributes(G, 'size').values()),
-    "edge_color": nx.get_edge_attributes(G, 'sybil_score').values(),
-    "width": list(nx.get_edge_attributes(G, 'weight').values()),
-    "alpha": 0.4,
-    "cmap": plt.cm.PiYG,
-    "edge_cmap": plt.cm.PiYG,
-    "with_labels": False,
-}
-
-fig = plt.figure(figsize=(12, 12))
-nx.draw(G, pos, **options)
-# fig.set_facecolor('black')
-plt.show()
-# %%
-G.edge
-# %%
