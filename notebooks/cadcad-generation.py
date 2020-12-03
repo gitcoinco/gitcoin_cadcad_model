@@ -4,44 +4,25 @@
 #
 
 # %%
-import numpy as np
-from cadCAD import configs
-from cadCAD.configuration.utils import bound_norm_random, ep_time_step, config_sim, access_block
-from cadCAD.configuration import Experiment
-from cadCAD.engine import Executor, ExecutionMode, ExecutionContext
-import networkx as nx
-import pandas as pd
-import numpy as np
-import json
-from typing import List, Tuple, Dict
+import matplotlib.pyplot as plt
 from collections import defaultdict
+from typing import List, Tuple, Dict
+import plotly.express as px
+import json
+import pandas as pd
+import networkx as nx
+from cadCAD.engine import Executor, ExecutionMode, ExecutionContext
+from cadCAD.configuration import Experiment
+from cadCAD.configuration.utils import bound_norm_random, ep_time_step, config_sim, access_block
+from cadCAD import configs
+import numpy as np
+(get_ipython().run_line_magic("load_ext", "autotime"))
 
-# %%
-from time import time
-import logging
-from functools import wraps
-logging.basicConfig(level=logging.DEBUG)
 
-
-def print_time(f):
-    """
-
-    """
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        # Current timestep
-        t = len(args[2])
-        t1 = time()
-        f_out = f(*args, **kwargs)
-        t2 = time()
-        text = f"{t}|{f.__name__}  (exec time: {t2 - t1:.2f}s)"
-        logging.debug(text)
-        return f_out
-    return wrapper
 # %%
 
 
-LIMIT_SEQUENCE = 200  # pass None to get everything
+LIMIT_SEQUENCE = 1000  # pass None to get everything
 
 
 def load_contributions_sequence() -> dict:
@@ -90,7 +71,8 @@ def load_contributions_sequence() -> dict:
 
     event_property_map = {'profile_for_clr_id': 'contributor',
                           'title': 'grant',
-                          'amount_per_period_usdt': 'amount'}
+                          'amount_per_period_usdt': 'amount',
+                          'sybil_score': 'sybil_score'}
 
     event_sequence = (sorted_df.rename(columns=event_property_map)
                       .loc[:, event_property_map.values()]
@@ -104,14 +86,12 @@ def load_contributions_sequence() -> dict:
 # %%
 
 CONTRIBUTIONS_SEQUENCE: dict = load_contributions_sequence()
-unique_users = {c['contributor'] for c in CONTRIBUTIONS_SEQUENCE}
-unique_grants = {c['grant'] for c in CONTRIBUTIONS_SEQUENCE}
 
 genesis_states = {
-    'network': nx.DiGraph(),
+    # 'network': nx.DiGraph(),
     'contributions': [],
     # (N_user, N_user)
-    'pair_totals': np.zeros((N_users, N_users)),
+    'pair_totals': defaultdict(lambda: defaultdict(lambda: 0.0)),
     'quadratic_match': defaultdict(lambda: 0.0),  # (N_grant)
     'quadratic_funding_per_grant': defaultdict(lambda: 0.0),
     'quadratic_match_per_grant': defaultdict(lambda: 0.0),
@@ -126,6 +106,50 @@ sys_params = {
     'v_threshold': [0.3],
     'total_pot': [5000]
 }
+
+
+# %%
+
+def aggregate_contributions(grant_contributions):
+    contrib_dict = {}
+    for contrib in grant_contributions:
+        user, proj, amount, _ = contrib.values()
+        if proj not in contrib_dict:
+            contrib_dict[proj] = {}
+        contrib_dict[proj][user] = contrib_dict[proj].get(user, 0) + amount
+    return contrib_dict
+
+
+def get_totals_by_pair(contrib_dict):
+    tot_overlap = {}
+
+    # start pairwise match
+    for _, contribz in contrib_dict.items():
+        for k1, v1 in contribz.items():
+            if k1 not in tot_overlap:
+                tot_overlap[k1] = {}
+
+            # pairwise matches to current round
+            for k2, v2 in contribz.items():
+                if k2 not in tot_overlap[k1]:
+                    tot_overlap[k1][k2] = 0
+                tot_overlap[k1][k2] += (v1 * v2) ** 0.5
+
+    return tot_overlap
+
+
+def match_project(contribz, pair_totals, threshold):
+    proj_total = 0
+    for k1, v1 in contribz.items():
+        for k2, v2 in contribz.items():
+            if k2 > k1:
+                # quadratic formula
+                p = pair_totals[k1][k2]
+                if p == 0:
+                    continue
+                else:
+                    proj_total += (threshold + 1) * ((v1 * v2) ** 0.5) / p
+    return np.real(proj_total)
 
 
 def p_new_contribution(params, substep, state_history, prev_state):
@@ -148,67 +172,17 @@ def s_append_edges(params, substep, state_history, prev_state, policy_input):
     return ('network', G)
 
 
-def s_pair_totals(params, substep, state_history, prev_state, policy_input):
-    # Dependences
-    pair_totals = prev_state['pair_totals'].copy()
-    contributions = prev_state['contributions']
-    new_contribution = policy_input['new_contribution']
-
-    new_amount = new_contribution['amount']
-    new_user = new_contribution['contributor']
-
-    # Logic
-    for c in contributions:
-        (i, j) = sorted([new_user, c['contributor']])
-        pair_totals[i][j] += np.lib.scimath.sqrt(new_amount * c['amount'])
-    return ('pair_totals', pair_totals)
-
-
-# %%
-x = np.array([1, 2, 3])
-np.outer(x, x)
-# %%
-
-
-@print_time
 def p_quadratic_match(params, substep, state_history, prev_state):
-    k = params['v_threshold']
+    threshold = params['v_threshold']
     total_pot = params['total_pot']
-    T = params['trust_bonus_per_user']
     pair_totals = prev_state['pair_totals']
     contributions = prev_state['contributions']
 
     grants = {c['grant'] for c in contributions}
-    M = defaultdict(lambda: 0.0)
-    for grant in grants:
-        grant_contributions = [c
-                               for c in contributions
-                               if c['grant'] == grant]
-
-        amounts = np.array(c['amount'] for c in grant_contributions])
-        users = np.array(c['contributor' for c in grant_contributions])
-        C = np.outer(grant_contributions, grant_contributions).tril()
-
-
-
-        for (i, c_i) in enumerate(grant_contributions):
-            v_i = c_i['amount']
-            u_i = c_i['contributor']
-            for (j, c_j) in enumerate(grant_contributions):
-                v_j = c_j['amount']
-                u_j = c_j['contributor']
-                if i > j:
-                    (u_i, u_j) = sorted([u_i, u_j])
-                    trust_bonus = max([T[u_i], T[u_j]])
-                    cross_contribution = np.lib.scimath.sqrt(max(v_i * v_j, 0))
-                    user_covariance = 1 + pair_totals[u_i][u_j]
-                    partial_match = trust_bonus * cross_contribution
-                    partial_match *= k
-                    partial_match /= user_covariance
-                    M[grant] += partial_match
-
-                else:
-                    continue
+    contrib_dict = aggregate_contributions(contributions)
+    pair_totals = get_totals_by_pair(contrib_dict)
+    M = {proj: match_project(contribz, pair_totals, threshold)
+         for proj, contribz in contrib_dict.items()}
 
     total_match = sum(M.values())
     F = {}
@@ -253,7 +227,6 @@ partial_state_update_blocks = [
         },
         'variables': {
             # 'network': s_append_edges,
-            'pair_totals': s_pair_totals,
             'contributions': s_append_contribution
         },
     },
@@ -263,8 +236,8 @@ partial_state_update_blocks = [
             'quadratic_match': p_quadratic_match
         },
         'variables': {
-            # 'quadratic_match_per_grant': s_quadratic_match_per_grant,
-            # 'quadratic_funding_per_grant': s_quadratic_funding_per_grant,
+            'quadratic_match_per_grant': s_quadratic_match_per_grant,
+            'quadratic_funding_per_grant': s_quadratic_funding_per_grant,
             'quadratic_total_funding': s_quadratic_total_funding,
             'quadratic_total_match': s_quadratic_total_match
 
@@ -321,4 +294,87 @@ def run(input_config):
 
 result = run(configs)
 
+# %%
+df = result.loc[(0, 0, 1, slice(None))]
+px.line(df.reset_index(),
+        x='timestep',
+        y=['quadratic_total_match', 'quadratic_total_funding'])
+
+
+# %%
+y = df.quadratic_total_funding / df.quadratic_total_match
+y.name = 'funding_per_match'
+px.line(y.reset_index(),
+        x='timestep',
+        y='funding_per_match',
+        log_y=True)
+# %%
+
+g_df = pd.DataFrame(df.contributions.iloc[-1])
+
+G = nx.from_pandas_edgelist(g_df,
+                            source='contributor',
+                            target='grant',
+                            edge_attr=True)
+
+profiles = {e[0] for e in G.edges}
+grants = {e[-1] for e in G.edges}
+
+grant_sizes = (g_df.groupby('grant')
+                 .amount
+                 .sum()
+                 .map(lambda x: x)
+                 .to_dict())
+
+collaborator_sizes = (g_df.groupby('contributor')
+                        .amount
+                        .sum()
+                        .map(lambda x: x)
+                        .to_dict())
+
+node_sizes = {**grant_sizes, **collaborator_sizes}
+nx.set_node_attributes(G, node_sizes, 'size')
+
+grant_color = (g_df.groupby('grant')
+               .sybil_score
+               .mean()
+               .to_dict())
+
+collaborator_color = (g_df.groupby('contributor')
+                      .sybil_score
+                      .mean()
+                      .to_dict())
+
+
+node_colors = {**grant_color, **collaborator_color}
+nx.set_node_attributes(G, node_colors, 'color')
+
+edge_weights = {n: v for n,
+                v in nx.get_edge_attributes(G, 'amount_per_period_usdt').items()}
+
+nx.set_edge_attributes(G, edge_weights, 'weight')
+dt = len(profiles) / len(grants)
+profile_pos = {node: (0, i) for (i, node) in enumerate(profiles)}
+grant_pos = {node: (1, i * dt) for (i, node) in enumerate(grants)}
+pos = {**profile_pos, **grant_pos}
+labels = {node: node for node in profiles | grants}
+
+
+options = {
+    "node_color": list(nx.get_node_attributes(G, 'color').values()),
+    "node_size": list(nx.get_node_attributes(G, 'size').values()),
+    "edge_color": nx.get_edge_attributes(G, 'sybil_score').values(),
+    "width": list(nx.get_edge_attributes(G, 'weight').values()),
+    "alpha": 0.4,
+    "cmap": plt.cm.PiYG,
+    "edge_cmap": plt.cm.PiYG,
+    "with_labels": False,
+}
+
+fig = plt.figure(figsize=(12, 12))
+nx.draw(G, pos, **options)
+# fig.set_facecolor('black')
+plt.show()
+# %%
+G.edge
 # %%
