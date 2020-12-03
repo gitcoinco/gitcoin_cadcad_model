@@ -22,24 +22,26 @@ import logging
 from functools import wraps
 logging.basicConfig(level=logging.DEBUG)
 
-def print_time(f):
-  """
 
-  """
-  @wraps(f)
-  def wrapper(*args, **kwargs):
-      # Current timestep
-      t = len(args[2])
-      t1 = time()
-      f_out = f(*args, **kwargs)
-      t2 = time()
-      text = f"{t}|{f.__name__}  (exec time: {t2 - t1:.2f}s)"
-      logging.debug(text)
-      return f_out
-  return wrapper
+def print_time(f):
+    """
+
+    """
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # Current timestep
+        t = len(args[2])
+        t1 = time()
+        f_out = f(*args, **kwargs)
+        t2 = time()
+        text = f"{t}|{f.__name__}  (exec time: {t2 - t1:.2f}s)"
+        logging.debug(text)
+        return f_out
+    return wrapper
 # %%
 
-LIMIT_SEQUENCE = 500 # pass None to get everything
+
+LIMIT_SEQUENCE = 200  # pass None to get everything
 
 
 def load_contributions_sequence() -> dict:
@@ -102,12 +104,14 @@ def load_contributions_sequence() -> dict:
 # %%
 
 CONTRIBUTIONS_SEQUENCE: dict = load_contributions_sequence()
+unique_users = {c['contributor'] for c in CONTRIBUTIONS_SEQUENCE}
+unique_grants = {c['grant'] for c in CONTRIBUTIONS_SEQUENCE}
 
 genesis_states = {
     'network': nx.DiGraph(),
     'contributions': [],
     # (N_user, N_user)
-    'pair_totals': defaultdict(lambda: defaultdict(lambda: 0.0)),
+    'pair_totals': np.zeros((N_users, N_users)),
     'quadratic_match': defaultdict(lambda: 0.0),  # (N_grant)
     'quadratic_funding_per_grant': defaultdict(lambda: 0.0),
     'quadratic_match_per_grant': defaultdict(lambda: 0.0),
@@ -159,6 +163,13 @@ def s_pair_totals(params, substep, state_history, prev_state, policy_input):
         pair_totals[i][j] += np.lib.scimath.sqrt(new_amount * c['amount'])
     return ('pair_totals', pair_totals)
 
+
+# %%
+x = np.array([1, 2, 3])
+np.outer(x, x)
+# %%
+
+
 @print_time
 def p_quadratic_match(params, substep, state_history, prev_state):
     k = params['v_threshold']
@@ -169,11 +180,17 @@ def p_quadratic_match(params, substep, state_history, prev_state):
 
     grants = {c['grant'] for c in contributions}
     M = defaultdict(lambda: 0.0)
-
     for grant in grants:
         grant_contributions = [c
                                for c in contributions
                                if c['grant'] == grant]
+
+        amounts = np.array(c['amount'] for c in grant_contributions])
+        users = np.array(c['contributor' for c in grant_contributions])
+        C = np.outer(grant_contributions, grant_contributions).tril()
+
+
+
         for (i, c_i) in enumerate(grant_contributions):
             v_i = c_i['amount']
             u_i = c_i['contributor']
@@ -202,9 +219,8 @@ def p_quadratic_match(params, substep, state_history, prev_state):
         if total_match == 0:
             total_match = 1.0
         F = {g: M[g] + (1 + np.log(total_pot / total_match) / 100)
-            for g in grants}
+             for g in grants}
 
-    
     return {'quadratic_match_per_grant': M,
             'quadratic_funding_per_grant': F}
 
@@ -228,6 +244,7 @@ def s_quadratic_total_funding(params, substep, state_history, prev_state, policy
     F = policy_input['quadratic_funding_per_grant']
     return ('quadratic_total_funding', sum(F.values()))
 
+
 partial_state_update_blocks = [
     {
         'label': 'Append new edges to the network',
@@ -235,7 +252,7 @@ partial_state_update_blocks = [
             'new_contribution': p_new_contribution
         },
         'variables': {
-            #'network': s_append_edges,
+            # 'network': s_append_edges,
             'pair_totals': s_pair_totals,
             'contributions': s_append_contribution
         },
@@ -246,11 +263,11 @@ partial_state_update_blocks = [
             'quadratic_match': p_quadratic_match
         },
         'variables': {
-            #'quadratic_match_per_grant': s_quadratic_match_per_grant,
-            #'quadratic_funding_per_grant': s_quadratic_funding_per_grant,
+            # 'quadratic_match_per_grant': s_quadratic_match_per_grant,
+            # 'quadratic_funding_per_grant': s_quadratic_funding_per_grant,
             'quadratic_total_funding': s_quadratic_total_funding,
             'quadratic_total_match': s_quadratic_total_match
-            
+
         }
     },
 ]
