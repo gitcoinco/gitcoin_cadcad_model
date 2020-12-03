@@ -7,7 +7,7 @@ import networkx as nx
 import cv2
 from tqdm.auto import tqdm
 
-def load_contributions_sequence(limit=100) -> dict:
+def load_contributions_sequence(limit=1000) -> dict:
     """
     Returns a dict that represents a event sequence of contributions containing
     the grant, collaborator and amount as key-values.
@@ -66,6 +66,11 @@ def load_contributions_sequence(limit=100) -> dict:
                       )
 
     return event_sequence
+
+
+def load_contributions_sequence_from_excel(path) -> dict:
+    df = pd.read_excel(path, sheet_name='contribution_sequence')
+    return df.to_dict(orient='index')
 
 
 def plot_contributions(contributions: pd.Series):
@@ -165,7 +170,7 @@ def create_video_snap(contributions_list: list):
 
     # video object
     out = cv2.VideoWriter(
-        'snap_plot.avi', cv2.VideoWriter_fourcc(*'DIVX'), 5, size)
+        'snap_plot.avi', cv2.VideoWriter_fourcc(*'DIVX'), 25, size)
 
     # iterate through images and make into movie.
     for i in tqdm(range(len(img_array)), total=len(img_array)):
