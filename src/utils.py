@@ -12,7 +12,7 @@ def load_contributions_sequence(limit=1000) -> dict:
     Returns a dict that represents a event sequence of contributions containing
     the grant, collaborator and amount as key-values.
     """
-    DATA_PATH = "data/query_result_2020-10-12T20_42_24.031Z.csv"
+    DATA_PATH = "../data/query_result_2020-10-12T20_42_24.031Z.csv"
     raw_df = pd.read_csv(DATA_PATH)
 
     # Parse the normalized data strings into dictionaries
@@ -153,11 +153,11 @@ def create_video_snap(contributions_list: list):
     # call snapplot
     for i, contributions in tqdm(enumerate(contributions_list), total=len(contributions_list)):
         fig = plot_contributions(contributions)
-        plt.savefig(f'images/{i}.png', bbox_inches='tight')
+        plt.savefig(f'../images/movie_frames/{i}.png', bbox_inches='tight')
         plt.close(fig)
 
     # sort the resulting images by earliest, which will correspond to the first snap plot
-    images = sorted(glob.glob('images/*.png'), key=os.path.getmtime)
+    images = sorted(glob.glob('../images/movies_frames/*.png'), key=os.path.getmtime)
 
     # iterate through the images, convert, and add to array
     size = 0
@@ -170,7 +170,7 @@ def create_video_snap(contributions_list: list):
 
     # video object
     out = cv2.VideoWriter(
-        'snap_plot.avi', cv2.VideoWriter_fourcc(*'DIVX'), 25, size)
+        '../images/videos/snap_plot.avi', cv2.VideoWriter_fourcc(*'DIVX'), 25, size)
 
     # iterate through images and make into movie.
     for i in tqdm(range(len(img_array)), total=len(img_array)):

@@ -1,38 +1,12 @@
 import numpy as np
-from cadCAD.engine import ExecutionContext, ExecutionMode, Executor
-from cadCAD.configuration.utils import config_sim
-from cadCAD.configuration import Experiment
-from collections import defaultdict
-import pandas as pd
-from typing import DefaultDict
-from src.utils import load_contributions_sequence_from_excel
-
-
-CONTRIBUTIONS_SEQUENCE: dict = load_contributions_sequence_from_excel('data/alternate_data.xls')
-
-genesis_states = {
-    'contributions': [],
-    'pair_totals': defaultdict(lambda: DefaultDict(lambda: 0.0)),
-    'quadratic_match': defaultdict(lambda: 0.0),  # (N_grant)
-    'quadratic_funding_per_grant': defaultdict(lambda: 0.0),
-    'quadratic_match_per_grant': defaultdict(lambda: 0.0),
-    'quadratic_total_match': 0.0,
-    'quadratic_total_funding': 0.0,
-}
-
-
-sys_params = {
-    'contribution_sequence': [CONTRIBUTIONS_SEQUENCE],
-    'trust_bonus_per_user': [defaultdict(lambda: 1.0)],
-    'v_threshold': [0.3],
-    'total_pot': [450000]
-}
-
 
 def aggregate_contributions(grant_contributions):
     contrib_dict = {}
     for contrib in grant_contributions:
-        user, proj, amount, _, __ = contrib.values()
+        contrib_tuple = tuple(contrib.values())
+        user = contrib_tuple[0]
+        proj = contrib_tuple[1]
+        amount = contrib_tuple[2]
         if proj not in contrib_dict:
             contrib_dict[proj] = {}
         contrib_dict[proj][user] = contrib_dict[proj].get(user, 0) + amount
@@ -68,6 +42,15 @@ def match_project(contribz, pair_totals, threshold):
                     continue
                 else:
                     proj_total += (threshold + 1) * ((v1 * v2) ** 0.5) / p
+    return np.real(proj_total)
+
+
+def simple_match_project(contribz, threshold):
+    proj_total = 0
+    for k1, v1 in contribz.items():
+        for k2, v2 in contribz.items():
+            if k2 > k1:
+                proj_total += (threshold + 1) * ((v1 * v2) ** 0.5)
     return np.real(proj_total)
 
 
@@ -138,81 +121,46 @@ def s_quadratic_total_funding(params, substep, state_history, prev_state, policy
     return ('quadratic_total_funding', sum(F.values()))
 
 
-def s_quadratic_total_funding(params, substep, state_history, prev_state, policy_input):
-    F = policy_input['quadratic_funding_per_grant']
-    return ('quadratic_total_funding', sum(F.values()))
+def p_simple_quadratic_match(params, substep, state_history, prev_state):
+    threshold = params['simple_threshold']
+    total_pot = params['total_pot']
+    contributions = prev_state['contributions']
+
+    grants = {c['grant'] for c in contributions}
+    contrib_dict = aggregate_contributions(contributions)
+    M = {proj: simple_match_project(contribz, threshold)
+         for proj, contribz in contrib_dict.items()}
+
+    total_match = sum(M.values())
+    F = {}
+    if total_match > total_pot:
+        F = {g: total_pot * M[g] / total_match
+             for g in grants}
+    else:
+        if total_match == 0:
+            total_match = 1.0
+        F = {g: M[g] + (1 + np.log(total_pot / total_match) / 100)
+             for g in grants}
+
+    return {'simple_quadratic_match_per_grant': M,
+            'simple_quadratic_funding_per_grant': F}
 
 
-partial_state_update_blocks = [
-    {
-        'label': 'Append new edges to the network',
-        'policies': {
-            'new_contribution': p_new_contribution
-        },
-        'variables': {
-            # 'network': s_append_edges,
-            'contributions': s_append_contribution
-        },
-    },
-    {
-        'label': 'Quadratic Funding',
-        'policies': {
-            'quadratic_match': p_quadratic_match
-        },
-        'variables': {
-            'quadratic_match_per_grant': s_quadratic_match_per_grant,
-            'quadratic_funding_per_grant': s_quadratic_funding_per_grant,
-            'quadratic_total_funding': s_quadratic_total_funding,
-            'quadratic_total_match': s_quadratic_total_match,
-            'quadratic_flagged_funding': s_quadratic_flagged_funding
-        }
-    }
-]
+def s_simple_quadratic_match_per_grant(params, substep, state_history, prev_state, policy_input):
+    M = policy_input['simple_quadratic_match_per_grant']
+    return ('simple_quadratic_match_per_grant', M)
 
 
-sim_params = {
-    'N': 1,
-    'T': range(len(CONTRIBUTIONS_SEQUENCE)),
-    'M': sys_params
-}
-
-sim_config = config_sim(sim_params)
-
-exp = Experiment()
-exp.append_configs(sim_configs=sim_config,
-                   initial_state=genesis_states,
-                   partial_state_update_blocks=partial_state_update_blocks)
+def s_simple_quadratic_funding_per_grant(params, substep, state_history, prev_state, policy_input):
+    F = policy_input['simple_quadratic_funding_per_grant']
+    return ('simple_quadratic_funding_per_grant', F)
 
 
-def run(input_config):
-    '''
-    Definition:
-    Run simulation
-
-    Parameters:
-    input_config: Optional way to pass in system configuration
-    '''
-    exec_mode = ExecutionMode()
-    # the code below selects the execution mode.
-    # local_mode defaults to multi-threaded.
-    # using single_mode for development
-    local_mode_ctx = ExecutionContext(context=exec_mode.local_mode)
-    simulation = Executor(exec_context=local_mode_ctx, configs=input_config)
-    raw_system_events, tensor_field, sessions = simulation.execute()
-    # dataframe = pd.DataFrame(raw_system_events)  # Result System Events DataFrame
-    # representation of the data./ when n=5 you have 5x the data. additional runs are in a sequential order.
-    # looking at a time step
-    # Postprocessing from Danilo
-    # Get system events and attribute index
-    df = (pd.DataFrame(raw_system_events))
-    # Clean substeps
-    first_ind = (df.substep == 0) & (df.timestep == 0)
-    last_ind = df.substep == max(df.substep)
-    inds_to_drop = (first_ind | last_ind)
-    df = df.loc[inds_to_drop].drop(columns=['substep'])
-
-    # Set indexes
-    df = df.set_index(['simulation', 'subset', 'run', 'timestep'])
-    return df
+def s_simple_quadratic_total_match(params, substep, state_history, prev_state, policy_input):
+    M = policy_input['simple_quadratic_match_per_grant']
+    return ('simple_quadratic_total_match', sum(M.values()))
 
 
+def s_simple_quadratic_total_funding(params, substep, state_history, prev_state, policy_input):
+    F = policy_input['simple_quadratic_funding_per_grant']
+    return ('simple_quadratic_total_funding', sum(F.values()))
