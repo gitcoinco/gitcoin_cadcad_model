@@ -3,6 +3,7 @@ import os
 import glob
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import networkx as nx
 import cv2
 from tqdm.auto import tqdm
@@ -12,7 +13,7 @@ def load_contributions_sequence(limit=1000) -> dict:
     Returns a dict that represents a event sequence of contributions containing
     the grant, collaborator and amount as key-values.
     """
-    DATA_PATH = "data/query_result_2020-10-12T20_42_24.031Z.csv"
+    DATA_PATH = "../data/query_result_2020-10-12T20_42_24.031Z.csv"
     raw_df = pd.read_csv(DATA_PATH)
 
     # Parse the normalized data strings into dictionaries
@@ -73,16 +74,31 @@ def load_contributions_sequence_from_excel(path) -> dict:
     return df.to_dict(orient='index')
 
 
-def plot_contributions(contributions: pd.Series):
+
+def plot_contributions(contributions: pd.Series,counter=0,savefigs=False):
+        
     g_df = pd.DataFrame(contributions)
 
-    G = nx.from_pandas_edgelist(g_df,
-                                source='contributor',
-                                target='grant',
-                                edge_attr=True)
+    contributor_nodes = g_df.contributor.values
+    grant_nodes = g_df.grant.values
+    amount_edges = g_df.amount.values
+    sybil_edges = g_df.sybil_score.values
 
-    profiles = {e[0] for e in G.edges}
-    grants = {e[-1] for e in G.edges}
+    G = nx.Graph()
+    for i in contributor_nodes:
+        G.add_node(i)
+        G.nodes[i]['type']= 'Contributor'
+
+    for j in grant_nodes:
+        G.add_node(j)
+        G.nodes[j]['type']= 'Grant'
+
+    for i,j,p in zip(contributor_nodes,grant_nodes,range(0,len(grant_nodes))):
+        G.add_edge(i, j)
+        G.edges[(i,j)]['amount'] = amount_edges[p]
+        G.edges[(i,j)]['type'] = 'support'
+        G.edges[(i,j)]['sybil_score'] = sybil_edges[p]
+
 
     grant_sizes = (g_df.groupby('grant')
                    .amount
@@ -99,43 +115,54 @@ def plot_contributions(contributions: pd.Series):
     node_sizes = {**grant_sizes, **collaborator_sizes}
     nx.set_node_attributes(G, node_sizes, 'size')
 
-    grant_color = (g_df.groupby('grant')
-                   .sybil_score
-                   .mean()
-                   .to_dict())
+    grant_color = (g_df.groupby('grant').sybil_score.mean().to_dict())
+    grant_color = {x: 'red' for x in grant_color}
 
-    collaborator_color = (g_df.groupby('contributor')
-                          .sybil_score
-                          .mean()
-                          .to_dict())
+    collaborator_color = (g_df.groupby('contributor').sybil_score.mean().to_dict())
+    collaborator_color = {x: 'blue' for x in collaborator_color}
 
     node_colors = {**grant_color, **collaborator_color}
     nx.set_node_attributes(G, node_colors, 'color')
 
     edge_weights = {n: v for n,
-                    v in nx.get_edge_attributes(G, 'amount_per_period_usdt').items()}
+                    v in nx.get_edge_attributes(G, 'amount').items()}
 
-    nx.set_edge_attributes(G, edge_weights, 'weight')
-    dt = len(profiles) / len(grants)
-    profile_pos = {node: (0, i) for (i, node) in enumerate(profiles)}
-    grant_pos = {node: (1, i * dt) for (i, node) in enumerate(grants)}
-    pos = {**profile_pos, **grant_pos}
-    labels = {node: node for node in profiles | grants}
+    nx.set_edge_attributes(G, edge_weights, 'amount')
 
-    options = {
-        "node_color": list(nx.get_node_attributes(G, 'color').values()),
-        "node_size": list(nx.get_node_attributes(G, 'size').values()),
-        "edge_color": nx.get_edge_attributes(G, 'sybil_score').values(),
-        "width": list(nx.get_edge_attributes(G, 'weight').values()),
-        "alpha": 0.4,
-        "cmap": plt.cm.PiYG,
-        "edge_cmap": plt.cm.PiYG,
-        "with_labels": False,
-    }
 
+    edges = []
+    for i in nx.get_edge_attributes(G, 'amount').values():
+        edges.append(i)
+
+    max_amount = max(edges)
+    min_amount = 0
+    normed_edges = []
+    for i in nx.get_edge_attributes(G, 'amount').values():
+        normed_edges.append((i-0)/(max_amount - 0))
+        
     fig = plt.figure(figsize=(12, 12))
-    nx.draw(G, pos, **options)
-    return fig
+    nx.draw_networkx(G, 
+            pos = nx.drawing.layout.bipartite_layout(G, contributor_nodes),
+            node_color= list(nx.get_node_attributes(G, 'color').values()),
+            node_size = list(nx.get_node_attributes(G, 'size').values()),
+            edge_color = normed_edges,
+            alpha = 0.4,
+            cmap = plt.cm.PiYG,
+            edge_cmap = plt.cm.PiYG,
+            with_labels = False
+            )
+
+    plt.title('Tokens donated by Contributors to Grants \n Timestep {} \n USDT {}'.format(counter,round(max_amount,2)))
+    contributor_patch = mpatches.Patch(color='blue', label='Contributor')
+    grant_patch = mpatches.Patch(color='red', label='Grant')
+    plt.legend(handles=[contributor_patch,grant_patch],loc='upper left')
+    plt.tight_layout()
+    plt.xticks([])
+    plt.yticks([])
+    if savefigs:
+        plt.savefig('images/'+str(counter)+'.png',bbox_inches='tight')
+    plt.show()
+    
 
 
 def create_video_snap(contributions_list: list):
@@ -152,9 +179,7 @@ def create_video_snap(contributions_list: list):
     '''
     # call snapplot
     for i, contributions in tqdm(enumerate(contributions_list), total=len(contributions_list)):
-        fig = plot_contributions(contributions)
-        plt.savefig(f'images/{i}.png', bbox_inches='tight')
-        plt.close(fig)
+        plot_contributions(contributions,counter=i,savefigs=True)
 
     # sort the resulting images by earliest, which will correspond to the first snap plot
     images = sorted(glob.glob('images/*.png'), key=os.path.getmtime)
@@ -176,3 +201,6 @@ def create_video_snap(contributions_list: list):
     for i in tqdm(range(len(img_array)), total=len(img_array)):
         out.write(img_array[i])
     out.release()
+    
+
+
