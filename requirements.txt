@@ -1,7 +1,0 @@
-networkx
-pandas
-matplotlib
-plotly
-ipython-autotime
-powerlaw
-seaborn
