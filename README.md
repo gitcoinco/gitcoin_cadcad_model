@@ -2,11 +2,7 @@
 
 This cadCAD model and notebook series is a collaboration between Gitcoin and BlockScience. A brief table of contents follows to explain the file structure of the various documents produced in this collaboration.
 
-## Table of Contents
-## 1. Supporting Documentation
-* <link to medium and any other relevant text here >
-
-## 2. Simulation Notebooks
+## Simulation Notebook
 * [dynamic_network.ipynb](dynamic_network.ipynb) - Network model using raw CSV data
 
 ## Gitcoin
@@ -69,8 +65,6 @@ https://community.cadcad.org/t/putting-cadcad-in-context/19
 https://github.com/cadCAD-org/demos
 
 ### Model Reproducibility
-In order to reperform this code, we recommend the researcher use the following link https://www.anaconda.com/products/individual to download Python 3.7. To install the specific version of cadCAD this repository was built with, run the following code: pip install cadCAD==0.4.23
-
-Then run cd Aragon_Conviction_Voting to enter the repository. Finally, run jupyter notebook to open a notebook server to run the various notebooks in this repository.
+In order to reperform this code, we recommend the researcher use the following link https://www.anaconda.com/products/individual to download Python 3.7. To install the specific version of cadCAD this repository was built with, run the following code: ```pip install -r requirements.txt'''
 
 Check out the cadCAD forum for more information about installing and using cadCAD
