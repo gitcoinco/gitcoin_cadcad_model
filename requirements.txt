@@ -1,0 +1,9 @@
+pandas>=0.25.3
+numpy>=1.19.4
+cadCAD>=0.4.22
+plotly>=4.8.2
+networkx>=2.5
+matplotlib>=3.3.3
+opencv-python>=4.4.0.46
+cloudpickle>=1.6.0
+jupyterlab>=2.2.9
