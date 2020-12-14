@@ -26,12 +26,12 @@ def load_contributions_sequence_from_excel(path) -> dict:
 
 def plot_contributions(contributions: pd.Series,counter=0,savefigs=False):
         
-    g_df = pd.DataFrame(contributions)
+    g_df = pd.DataFrame(contributions).assign(sybil_score=0)
 
     contributor_nodes = g_df.contributor.values
     grant_nodes = g_df.grant.values
     amount_edges = g_df.amount.values
-    sybil_edges = g_df.sybil_score.values
+    sybil_edges = g_df.sybil_score
 
     G = nx.Graph()
     for i in contributor_nodes:
