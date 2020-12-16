@@ -5,47 +5,12 @@ This cadCAD model and notebook series is a collaboration between Gitcoin and Blo
 ## Simulation Notebook
 * [dynamic_network.ipynb](dynamic_network.ipynb) - Network model using raw CSV data
 
-## Gitcoin
-## Towards Computer Aided Governance of Gitcoin Grants
+## Medium Article 
+* [Towards Computer-Aided Governance of Gitcoin Grants](https://medium.com/block-science/towards-computer-aided-governance-of-gitcoin-grants-730de7bcdbef)
 
 ### Quadratic Funding
 
-Gitcoin Grants leverages a powerful algorithmic policy called quadratic funding to capture the preferences of a larger population by using a sum of square roots when computing the matching.
-
-While quadratic funding is very powerful, like any real world system it has weaknesses as well as strengths. Specifically, quadratic funding is sensitive to sybil attacks and collusion strategies. Furthermore, it has been observed to exhibit the Matthew Effect.
-
-Rather than become disenchanted with quadratic funding, the Gitcoin team strives to operate a fair and transparent platform, including the ongoing maintainance of its algorithms.
-
-### What does it mean to 'Govern' Gitcoin Grants?
-
-The Gitcoin Grants platform doesn't directly control user decisions, it simply empowers them to coordinate in funding the projects the community deems most deserving of the match funds. The Quadratic Funding algorithm is the main 'resource allocation policy' but as it turns out, other algorithmic polices are at play. 
-
-For example, there are sub algorithms which assign sybil scores and rewards for external identity verifications to defend against sybil attacks; there is a "pairwise (?)" algorithm which reduces the effect of collusion. 
-
-More generally, the Gitcoin team reserves the rights to iterate upon the finer points of their matching algorithms in pursuit of their mandate:
-> to provide a fair and transparent platform which empowers community donors to determine the allocation of a matching pool provided by sponsoring organizations. (
-
-In order to uphold this mandate the Gitcoin team must:
-- identify specific instances of malicious activity
-- indentify malicious strategies which game the algorithms to undermine the community goals
-- identify misaligned incentives where honest behavior still results in undesirable system level outcomes
-- propose alternative policies which address challenges identified
-- test alternative policies to determine their most likely systemic impact
-- communicate proposed changes and gain community buy-in for proposed policy changes
-
-
-### How Does One Do these things!?
-
-This is accomplished which a complex systems approach, exemplied by a dynamic network model of the gitcoin CLR process. Fortunately, we have one of those!
-
-The dynamic network model of gitcoin is comprised of 3 main components
-1. A mathematical representation of 'trajectory' of a Gitcoin round including all of its grants, participants, and contributions.
-2. A computational model of that 'dynamical system' implemented in cadCAD
-3. Data from the real life Gitcoin system, representing specific historical actions taken by participants
-
-Combining these three things, we have model of Gitcoin that allows us to run counterfactual analysis to test sensativity to various attacks, test out alternative policies, explore new metrics, or even do all three at the same time.
-
-Much of this research is future work, but today we would like to share with you the first version of the gitcoin cadCAD model and invite you to follow our repo as we continue to flesh out new experiments, analyze new data, and support the gitcoin team in their quest for a fair and transparent way to distribute matching funds.
+Quadratic Voting captured the hearts of the web3 space after being re-introduced by the [Radical xChange movement](https://www.radicalxchange.org/). Gitcoin builds on the same principle by leveraging a powerful algorithmic policy called [Quadratic Funding (QF)](https://wtfisqf.com/?grant=&grant=&grant=&grant=&match=1000) to allocate sponsor funds via matching community donations to grants submitted through the Gitcoin Grants program. The purpose of this form of grant matching is to allocate sponsor funding via a community preference signal by capturing not just the depth of donations ($ amount donated), but also the breadth of the donation base (# people who donated). The outcome is that grants that are supported by many people with small donations would receive relatively larger matching than grants supported by few donations of larger amounts. In effect, **Quadratic Funding aims to boost the influence of people over plutocracy.**
 
 ## Background information & concepts addressed
 ### What does this cadCAD model do
