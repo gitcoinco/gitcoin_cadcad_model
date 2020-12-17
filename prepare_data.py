@@ -34,8 +34,8 @@ def parse_grants_data(input_csv_path: str, output_csv_path: str=None) -> pd.Data
 
     # Filter GC grants round & GC bot
     QUERY = 'title != "Gitcoin Grants Round 8 + Dev Fund"'
-    QUERY += ' | '
-    QUERY += 'profile_for_clr_id != 2853'
+    # QUERY += ' | '
+    # QUERY += 'profile_for_clr_id != 2853'
     df = (raw_df.join(json_df)
                 .assign(**sanitize_map)
                 .drop(columns=drop_cols)
@@ -45,7 +45,7 @@ def parse_grants_data(input_csv_path: str, output_csv_path: str=None) -> pd.Data
     sorted_df = df.sort_values('created_on')
 
     # Columns which are to keep into the dynamical network
-    event_property_map = {'profile_for_clr_id': 'contributor',
+    event_property_map = {'originated_address': 'contributor',
                           'title': 'grant',
                           'amount_per_period_usdt': 'amount'}
 

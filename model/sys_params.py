@@ -3,7 +3,7 @@ from .parts.utils import load_contributions_sequence_from_csv
 from collections import defaultdict
 import os
 
-CSV_PATH = 'model/data/data.csv'
+CSV_PATH = 'model/data/data.csv.xz'
 EXCEL_PATH = 'model/data/alternate_data.xls'
 load_from_excel: str = os.environ.get('GITCOIN_LOAD_EXCEL')
     
