@@ -2,6 +2,14 @@
 
 This cadCAD model and notebook series is a collaboration between Gitcoin and BlockScience. A brief table of contents follows to explain the file structure of the various documents produced in this collaboration.
 
+## How to use
+
+1. Install all requirements: `pip install -r requirements.txt`
+2. Change the parameters on `env_config.py` so that it fits your use case.
+3. Run the simulation so that we generate the `model/data/simulation_result.pkl.gz` pickled file. 
+	* Alternatively, you can just unzip the `model/data/simulation_result.tar.xz` file.
+4. Perform any analytics on the generated data.
+
 ## Simulation Notebook
 * [dynamic_network.ipynb](dynamic_network.ipynb) - Network model using raw CSV data
 
