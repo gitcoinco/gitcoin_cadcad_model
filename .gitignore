@@ -133,3 +133,5 @@ images/videos/*
 
 
 *.pkl.gz
+
+raw_data/
