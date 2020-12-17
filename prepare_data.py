@@ -1,3 +1,4 @@
+import click
 import pandas as pd
 import json
 from cape_privacy.pandas import transformations as tfms
@@ -61,7 +62,20 @@ def parse_grants_data(input_csv_path: str, output_csv_path: str=None) -> pd.Data
                          .assign(flag=0)
                       )
     
-    if output_csv is not None:
-        event_df.to_csv(output_csv_path, index=False)
+    if output_csv_path is not None:
+        event_df.to_csv(output_csv_path, index=False, compression='xz')
         
     return event_df
+
+@click.command()
+@click.option('--src', default=None, help='Path for the input raw data (eg. raw_data/gc_round_7.csv)')
+@click.option('--dst', default=None, help='Path for the output clean data: (eg. model/data/OUTPUT.csv.xz)')
+def main(src, dst):
+    if src is None or dst is None:
+        print("Paths must be provided in order to continue")
+    else:
+        parse_grants_data(src, dst)
+
+
+if __name__ == '__main__':
+    main()
