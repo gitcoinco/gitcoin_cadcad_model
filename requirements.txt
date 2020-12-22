@@ -19,3 +19,5 @@ tqdm>4.54.1
 ipywidgets>=7.5.1
 jupyter>=1.0.0
 netwulf>=1.15.0
+colormap>=1.0.3
+easydev>=0.10.1
