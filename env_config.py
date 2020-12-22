@@ -8,4 +8,4 @@ os.environ['GITCOIN_LOAD_EXCEL'] = 'no'
 
 # Set to 'all' for doing all timesteps
 # Set to a integer for doing just the first N timesteps
-os.environ['GITCOIN_TIMESTEPS'] = str(6000) 
+os.environ['GITCOIN_TIMESTEPS'] = 'all'

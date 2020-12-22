@@ -12,6 +12,7 @@ partial_state_update_blocks = [
     },
     {
         'label': 'Quadratic Funding',
+        'ignore': True,
         'policies': {
             'quadratic_match': p_quadratic_match
         },
@@ -25,6 +26,7 @@ partial_state_update_blocks = [
     },
     {
         'label': 'Simple Quadratic Funding',
+        'ignore': True,
         'policies': {
             'simple_quadratic_match': p_simple_quadratic_match
         },
@@ -37,3 +39,8 @@ partial_state_update_blocks = [
         }
     },
 ]
+
+partial_state_update_blocks = [psub
+                               for psub 
+                               in partial_state_update_blocks
+                               if psub.get('ignore', False) is False]
