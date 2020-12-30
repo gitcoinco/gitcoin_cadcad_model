@@ -1,5 +1,6 @@
 pandas>=0.25.3
-numpy>=1.19.4
+numpy==1.19.3; platform_system == "Windows" # Numpy 1.19.4 has a bug on windows platforms
+numpy>=1.19.4; platform_system == "linux"
 cadCAD>=0.4.22
 plotly>=4.8.2
 networkx>=2.5
@@ -18,6 +19,6 @@ scipy>=1.5.4
 tqdm>4.54.1
 ipywidgets>=7.5.1
 jupyter>=1.0.0
-netwulf>=1.15.0
+netwulf>=0.1.5
 colormap>=1.0.3
 easydev>=0.10.1
