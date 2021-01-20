@@ -2,8 +2,6 @@
 
 This cadCAD model and notebook series is a collaboration between Gitcoin and BlockScience. A brief table of contents follows to explain the file structure of the various documents produced in this collaboration.
 
-* TOC {:toc}
-
 ## How to use
 
 1. Install all requirements: `pip install -r requirements.txt`
