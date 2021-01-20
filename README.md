@@ -2,6 +2,8 @@
 
 This cadCAD model and notebook series is a collaboration between Gitcoin and BlockScience. A brief table of contents follows to explain the file structure of the various documents produced in this collaboration.
 
+* TOC {:toc}
+
 ## How to use
 
 1. Install all requirements: `pip install -r requirements.txt`
@@ -11,10 +13,20 @@ This cadCAD model and notebook series is a collaboration between Gitcoin and Blo
 4. Perform any analytics on the generated data or use one of the available notebooks.
 
 ## Simulation Notebook
-* [dynamic_network.ipynb](dynamic_network.ipynb) - Network model using raw CSV data
-* [graph_communities.ipynb](graph_communities.ipynb) - Visualization of communites on Gitcoin
 
-## Medium Article 
+### Dynamic Network exploratory analysis 
+
+Notebook: [dynamic_network.ipynb](dynamic_network.ipynb) - 
+
+This notebook showcases the cadCAD networked model using raw CSV data
+
+### Graph-based communites in Gitcoin
+
+Notebook: [graph_communities.ipynb](graph_communities.ipynb)
+
+This notebook contains visualizations of communites on Gitcoin
+
+## Medium Articles
 * [Towards Computer-Aided Governance of Gitcoin Grants](https://medium.com/block-science/towards-computer-aided-governance-of-gitcoin-grants-730de7bcdbef)
 * [Colluding Communities or New Markets?](https://medium.com/block-science/colluding-communities-or-new-markets-f64194a1b754)
 ### Quadratic Funding
