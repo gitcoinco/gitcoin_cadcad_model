@@ -55,8 +55,9 @@ def quadratic_match(G: nx.Graph,
 
     contributions = []
     for contrib in raw_contributions:
-        amount = contrib[2]['amount_per_period_usdt']
-        grant = contrib[1]
+        #print(contrib)
+        amount = contrib[2]['amount']
+        grant = contrib[1] # Confirmed, don't trust
         element = {grant: (None, contrib[0], contrib[1], amount)}
         contributions.append(element)
 

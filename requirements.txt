@@ -21,3 +21,4 @@ jupyter>=1.0.0
 netwulf>=0.1.5
 colormap>=1.0.3
 easydev>=0.10.1
+holoviews

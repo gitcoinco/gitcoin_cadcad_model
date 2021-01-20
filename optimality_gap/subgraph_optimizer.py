@@ -1,10 +1,10 @@
 import networkx as nx
 import random
-from typing import Callable, List
+from typing import Callable, List, Tuple
 from tqdm.auto import tqdm
 
 def optimize_graph_connectivity(subgraph: nx.Graph,
-                                utility_function: Callable[[nx.Graph], float]) -> tuple:
+                                utility_function: Callable[[nx.Graph], float]) -> Tuple[nx.Graph, float]:
 
     destination_nodes: list = [node
                                for node, value in dict(subgraph.nodes.data('type')).items()
@@ -18,7 +18,7 @@ def optimize_graph_connectivity(subgraph: nx.Graph,
     print("Optimizing subgraph")
     for edge in tqdm(edges, desc='Sweeping edges'):
         src_node: str = edge[0]
-        for dst_node in tqdm(destination_nodes, desc='Sweeping destination nodes', leave=False):
+        for dst_node in destination_nodes:
             # Create a copy from the original graph for mutation
             temp_subgraph: nx.Graph = subgraph.copy()
             temp_subgraph.remove_edge(*edge)
