@@ -47,31 +47,41 @@ def match_project(contribz, pair_totals, threshold):
     return np.real(proj_total)
 
 
-
 def quadratic_match(G: nx.Graph,
                     threshold: float) -> dict:
     G = G.copy()
     raw_contributions = G.edges(data=True)
 
+    grants_set = {n
+                  for n, attrs
+                  in G.nodes(data=True)
+                  if attrs['type'] == 'grant'}
+
     contributions = []
     for contrib in raw_contributions:
-        #print(contrib)
         amount = contrib[2]['amount']
-        grant = contrib[1] # Confirmed, don't trust
-        element = {grant: (None, contrib[0], contrib[1], amount)}
+        grant = contrib[1]        
+        if grant not in grants_set:
+            grant = contrib[0]
+            contributor = contrib[1]
+        else:
+            contributor = contrib[0]
+        # {'grant': {match, user, grant, amount}}
+        element = {grant: (None, contributor, grant, amount)}
         contributions.append(element)
 
     contrib_dict = aggregate_contributions(contributions)
     pair_totals = get_totals_by_pair(contrib_dict)
     matches = {proj: match_project(contribz, pair_totals, threshold)
-               for proj, contribz in contrib_dict.items()}
+               for proj, contribz
+               in contrib_dict.items()}
     return matches
 
 
 def quadratic_funding(G: nx.Graph,
                       total_pot: float) -> dict:
     G = G.copy()
-    grants = {label 
+    grants = {label
               for label, node in G.nodes(data=True)
               if node['type'] == 'grant'}
     M = nx.get_node_attributes(G, 'match')

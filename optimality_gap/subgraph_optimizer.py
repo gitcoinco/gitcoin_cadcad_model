@@ -1,35 +1,49 @@
 import networkx as nx
+import numpy as np
 import random
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Callable
 from tqdm.auto import tqdm
+from networkx.algorithms.rewiring import simulated_annealing_optimize
+
+
+def rewiring_rule(G: nx.Graph, seed=None) -> nx.Graph:
+    r = random.Random(seed)
+
+    contributors_set = {n
+                        for n, attrs
+                        in G.nodes(data=True)
+                        if attrs['type'] == 'contributor'}
+
+    grants_set = {n
+                  for n, attrs
+                  in G.nodes(data=True)
+                  if attrs['type'] == 'grant'}
+
+    if len(G.nodes) > 2 and len(G.edges) > 1:
+        edge = r.choice(tuple(G.edges))
+        edge_data = G.edges[edge]
+        node_1 = r.choice(tuple(contributors_set))
+        node_2 = r.choice(tuple(grants_set))
+        G_temp = G.copy()
+        G_temp.remove_edge(*edge)
+        G_temp.add_edge(node_1, node_2, **edge_data)
+        return G_temp
+    else:
+        raise ValueError('Graph must have more than two nodes & one edge')
+
 
 def optimize_graph_connectivity(subgraph: nx.Graph,
                                 utility_function: Callable[[nx.Graph], float]) -> Tuple[nx.Graph, float]:
 
-    destination_nodes: list = [node
-                               for node, value in dict(subgraph.nodes.data('type')).items()
-                               if value == 'destination']
+    best_score = utility_function(subgraph)
+    best_subgraph = subgraph
 
-    edges: list = [edg for edg in subgraph.edges]
-
-    best_subgraph: nx.Graph = subgraph.copy()
-    best_score: float = utility_function(best_subgraph)
-
-    print("Optimizing subgraph")
-    for edge in tqdm(edges, desc='Sweeping edges'):
-        src_node: str = edge[0]
-        for dst_node in destination_nodes:
-            # Create a copy from the original graph for mutation
-            temp_subgraph: nx.Graph = subgraph.copy()
-            temp_subgraph.remove_edge(*edge)
-
-            # Add the edge mutation
-            temp_edge: tuple = (src_node, dst_node)
-            temp_subgraph.add_edge(*temp_edge)
-
-            # Retrieve score
-            score: float = utility_function(temp_subgraph)
-            if score > best_score:
-                best_subgraph: nx.Graph = temp_subgraph.copy()
-
-    return (best_subgraph, best_score)
+    try:
+        (best_score, best_subgraph) = simulated_annealing_optimize(subgraph,
+                                                                utility_function,
+                                                                rewiring_rule,
+                                                                n_iter=3)
+    except:
+        best_score = np.nan
+    finally:
+        return (best_subgraph, best_score)

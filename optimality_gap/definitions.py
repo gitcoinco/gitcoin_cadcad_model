@@ -59,7 +59,7 @@ def grant_optimality_gap(contribution_graph: nx.Graph,
         optimality_gap = 1 - real_match / optimal_match
     else:
         optimality_gap = np.nan
-        
+
     return optimality_gap
 
 
