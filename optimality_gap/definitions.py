@@ -13,7 +13,7 @@ def robust_shortest_path_length(*args, **kwargs) -> float:
         output = nx.shortest_path_length(*args, **kwargs)
     finally:
         return output
-    
+
 
 def NeighborsSubgraph(contribution_graph: nx.Graph,
                       grant: str) -> nx.Graph:
@@ -22,8 +22,8 @@ def NeighborsSubgraph(contribution_graph: nx.Graph,
     """
     source = grant
     distances_to_source = {target: robust_shortest_path_length(contribution_graph,
-                                                           source,
-                                                           target)
+                                                               source,
+                                                               target)
                            for target in contribution_graph.nodes}
 
     neighbors = [node for (node, distance) in distances_to_source.items()

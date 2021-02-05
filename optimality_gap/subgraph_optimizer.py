@@ -43,7 +43,5 @@ def optimize_graph_connectivity(subgraph: nx.Graph,
                                                                 utility_function,
                                                                 rewiring_rule,
                                                                 n_iter=3)
-    except:
-        best_score = np.nan
     finally:
         return (best_subgraph, best_score)
