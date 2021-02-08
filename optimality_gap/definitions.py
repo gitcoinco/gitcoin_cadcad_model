@@ -65,7 +65,9 @@ def grant_optimality_gap(contribution_graph: nx.Graph, grant: str) -> float:
                                                         )
     # Compute Optimality Gap
     if optimal_match > 0:
-        optimality_gap = 1 - real_match / optimal_match
+        optimality_gap = (1 - real_match / optimal_match)
+        # print("---")
+        # print(f"{grant}: {optimality_gap} | {optimal_match} | {real_match}")
     else:
         optimality_gap = np.nan
 

@@ -33,9 +33,9 @@ def subgraph_rewire(G: nx.Graph, nodes: set, seed=None) -> Tuple[nx.Graph, nx.Gr
         raise ValueError("Subgraph must have more than two nodes & one edge")
 
 
-def optimize_subgraph_connectivity(
-    graph: nx.Graph, nodes: set, utility_function: Callable[[nx.Graph], float]
-) -> Tuple[nx.Graph, float]:
+def optimize_subgraph_connectivity(graph: nx.Graph,
+                                   nodes: set,
+                                   utility_function: Callable[[nx.Graph], float]) -> Tuple[nx.Graph, float]:
 
     best_score = utility_function(graph)
     best_subgraph = graph.subgraph(nodes)
