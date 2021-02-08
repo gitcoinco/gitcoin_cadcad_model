@@ -1,4 +1,5 @@
-from .parts.system import *
+import os
+from model.parts.system import *
 
 partial_state_update_blocks = [
     {
@@ -12,6 +13,7 @@ partial_state_update_blocks = [
     },
     {
         'label': 'Quadratic Funding',
+        'tags': {'compute-qf'},
         'policies': {
             'quadratic_match': p_quadratic_match
         },
@@ -25,6 +27,7 @@ partial_state_update_blocks = [
     },
     {
         'label': 'Simple Quadratic Funding',
+        'tags': {'compute-qf'},
         'policies': {
             'simple_quadratic_match': p_simple_quadratic_match
         },
@@ -37,3 +40,8 @@ partial_state_update_blocks = [
         }
     },
 ]
+
+if os.environ['GITCOIN_COMPUTE_QF'] == 'no':
+    partial_state_update_blocks = [psub
+                                   for psub in partial_state_update_blocks
+                                   if 'compute-qf' not in psub.get('tags', {})]

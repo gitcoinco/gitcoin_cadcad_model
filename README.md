@@ -10,6 +10,9 @@ This cadCAD model and notebook series is a collaboration between Gitcoin and Blo
     * Alternatively, you can just unzip the `model/data/simulation_result.tar.xz` file.
 4. Perform any analytics on the generated data or use one of the available notebooks.
 
+Additionally, there are several options on the `run_simulation.py` script 
+that encapsulates the features on `env_config.py` without needing to modify it.
+
 ## Repository Structure
 
 ### Root of the Repository:

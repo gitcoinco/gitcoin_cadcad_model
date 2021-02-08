@@ -1,10 +1,10 @@
 from cadCAD.configuration.utils import config_sim
 from cadCAD.configuration import Experiment
 
-from .state_variables import initial_states
-from .sys_params import sys_params
-from .sys_params import CONTRIBUTIONS_SEQUENCE
-from .partial_state_update_block import partial_state_update_blocks
+from model.state_variables import initial_states
+from model.sys_params import sys_params
+from model.sys_params import CONTRIBUTIONS_SEQUENCE
+from model.partial_state_update_block import partial_state_update_blocks
 
 sim_params = {
     'N': 1,

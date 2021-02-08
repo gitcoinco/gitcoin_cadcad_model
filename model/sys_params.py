@@ -1,5 +1,5 @@
-from .parts.utils import load_contributions_sequence_from_excel
-from .parts.utils import load_contributions_sequence_from_csv
+from model.parts.utils import load_contributions_sequence_from_excel
+from model.parts.utils import load_contributions_sequence_from_csv
 from collections import defaultdict
 import os
 
