@@ -47,20 +47,16 @@ def match_project(contribz, pair_totals, threshold):
     return np.real(proj_total)
 
 
-def quadratic_match(G: nx.Graph,
-                    threshold: float) -> dict:
+def quadratic_match(G: nx.Graph, threshold: float) -> dict:
     G = G.copy()
     raw_contributions = G.edges(data=True)
 
-    grants_set = {n
-                  for n, attrs
-                  in G.nodes(data=True)
-                  if attrs['type'] == 'grant'}
+    grants_set = {n for n, attrs in G.nodes(data=True) if attrs["type"] == "grant"}
 
     contributions = []
     for contrib in raw_contributions:
-        amount = contrib[2]['amount']
-        grant = contrib[1]        
+        amount = contrib[2]["amount"]
+        grant = contrib[1]
         if grant not in grants_set:
             grant = contrib[0]
             contributor = contrib[1]
@@ -72,33 +68,33 @@ def quadratic_match(G: nx.Graph,
 
     contrib_dict = aggregate_contributions(contributions)
     pair_totals = get_totals_by_pair(contrib_dict)
-    matches = {proj: match_project(contribz, pair_totals, threshold)
-               for proj, contribz
-               in contrib_dict.items()}
+    matches = {
+        proj: match_project(contribz, pair_totals, threshold)
+        for proj, contribz in contrib_dict.items()
+    }
     return matches
 
 
-def quadratic_funding(G: nx.Graph,
-                      total_pot: float) -> dict:
+def quadratic_funding(G: nx.Graph, total_pot: float) -> dict:
     G = G.copy()
-    grants = {label
-              for label, node in G.nodes(data=True)
-              if node['type'] == 'grant'}
-    M = nx.get_node_attributes(G, 'match')
+    grants = {label for label, node in G.nodes(data=True) if node["type"] == "grant"}
+    M = nx.get_node_attributes(G, "match")
 
     total_match = sum(M.values())
     F = {}
     if total_match > total_pot:
-        F = {g: total_pot * M[g] / total_match
-             for g in grants}
+        F = {g: total_pot * M[g] / total_match for g in grants}
     else:
         if total_match == 0:
             total_match = 1.0
-        F = {g: M[g] + (1 + np.log(total_pot / total_match) / 100)
-             for g in grants}
+        F = {g: M[g] + (1 + np.log(total_pot / total_match) / 100) for g in grants}
     return F
 
 
-def total_quadratic_match(G: nx.Graph,
-                          threshold: float) -> float:
+def total_quadratic_match(G: nx.Graph, threshold: float) -> float:
     return sum(quadratic_match(G, threshold).values())
+
+
+def partial_quadratic_match(G: nx.Graph, nodes: set, threshold: float) -> float:
+    matches = quadratic_match(G, threshold)
+    return sum(match for grant, match in matches.items() if grant in nodes)
