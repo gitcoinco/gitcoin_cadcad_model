@@ -44,7 +44,9 @@ def subgraph_rewire(G: nx.Graph, nodes: set, seed=None) -> Tuple[nx.Graph, nx.Gr
 
 def optimize_subgraph_connectivity(graph: nx.Graph,
                                    nodes: set,
-                                   utility_function: Callable[[nx.Graph], float]) -> Tuple[nx.Graph, float]:
+                                   utility_function: Callable[[nx.Graph], float],
+                                   n_iter: int = 50,
+                                   **kwargs) -> Tuple[nx.Graph, float]:
     """
     Optimize graph with the rewire operations restricted to the nodes 
     given as arguments.
@@ -69,7 +71,7 @@ def optimize_subgraph_connectivity(graph: nx.Graph,
         #                                                            rewiring_rule,
         #                                                            n_iter=3)
         (best_score, best_subgraph) = hill_climb_optimize(
-            graph, utility_function, rewiring_rule, n_iter=50
+            graph, utility_function, rewiring_rule, n_iter=n_iter, **kwargs
         )
     finally:
         return (best_subgraph, best_score)

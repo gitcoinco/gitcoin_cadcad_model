@@ -47,7 +47,9 @@ def partial_utility_function(graph, nodes):
     return partial_quadratic_match(graph, nodes, THRESHOLD)
 
 
-def grant_optimality_gap(contribution_graph: nx.Graph, grant: str) -> float:
+def grant_optimality_gap(contribution_graph: nx.Graph,
+                         grant: str,
+                         **kwargs) -> float:
     """"""
     # Get the Neighbors Subgraph
     real_subgraph = NeighborsSubgraph(contribution_graph, grant)
@@ -62,7 +64,8 @@ def grant_optimality_gap(contribution_graph: nx.Graph, grant: str) -> float:
     # Compute optimal match
     (_, optimal_match) = optimize_subgraph_connectivity(contribution_graph,
                                                         subgraph_nodes,
-                                                        utility_function
+                                                        utility_function,
+                                                        **kwargs
                                                         )
     # Compute Optimality Gap
     if optimal_match > 0:
@@ -75,7 +78,8 @@ def grant_optimality_gap(contribution_graph: nx.Graph, grant: str) -> float:
     return optimality_gap
 
 
-def optimality_gap_per_grant(contribution_graph: nx.Graph) -> Dict[str, float]:
+def optimality_gap_per_grant(contribution_graph: nx.Graph,
+                             **kwargs) -> Dict[str, float]:
     """
     Returns a dictionary containing the optimality gap for each grant on
     a contribution graph.
@@ -86,7 +90,7 @@ def optimality_gap_per_grant(contribution_graph: nx.Graph) -> Dict[str, float]:
         if data["type"] == "grant"
     }
 
-    def f(g): return grant_optimality_gap(contribution_graph, g)
+    def f(g): return grant_optimality_gap(contribution_graph, g, **kwargs)
 
     with ProcessingPool() as pool:
         grants_list = list(grants)
