@@ -1,5 +1,5 @@
-from .quadratic_match import partial_quadratic_match
-from optimality_gap.functions import contributions_to_graph
+from optimality_gap.quadratic_match import partial_quadratic_match
+from optimality_gap.functions import total_amount
 from optimality_gap.subgraph_optimizer import optimize_subgraph_connectivity
 from typing import Dict, Tuple, List
 from tqdm.auto import tqdm
@@ -74,16 +74,36 @@ def grant_optimality_gap(contribution_graph: nx.Graph, grant: str) -> float:
     return optimality_gap
 
 
-def graph_optimality_gap_distribution(contribution_graph: nx.Graph) -> List[float]:
-    """"""
-    grants = {
+def optimality_gap_per_grant(contribution_graph: nx.Graph) -> Dict[str, float]:
+    """
+    Returns a dictionary containing the optimality gap for each grant on
+    a contribution graph.
+    """
+    grants: set = {
         node
         for (node, data) in contribution_graph.nodes(data=True)
         if data["type"] == "grant"
     }
 
-    distribution = []
-    for grant in tqdm(grants, desc="Calculating optimality gap"):
-        metric = grant_optimality_gap(contribution_graph, grant)
-        distribution.append(metric)
-    return distribution
+    optimality_gap_per_grant = {grant: grant_optimality_gap(contribution_graph, grant)
+                                for grant
+                                in tqdm(grants, desc="Calculating Optimality Gap")}
+
+    return optimality_gap_per_grant
+
+
+def amount_per_grant(contribution_graph: nx.Graph) -> Dict[str, float]:
+    """
+    Returns a dictionary containing the quadratic match for each grant on
+    a contribution graph.
+    """
+    grants: set = {
+        node
+        for (node, data) in contribution_graph.nodes(data=True)
+        if data["type"] == "grant"
+    }
+
+    amount_per_grant = {grant: total_amount(contribution_graph, grant)
+                                for grant in grants}
+
+    return amount_per_grant
