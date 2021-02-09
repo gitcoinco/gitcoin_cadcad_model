@@ -56,7 +56,7 @@ def grant_optimality_gap(contribution_graph: nx.Graph, grant: str) -> float:
     def utility_function(x): return partial_utility_function(x, subgraph_nodes)
 
     # Get current match
-    real_match = utility_function(real_subgraph)
+    real_match = utility_function(contribution_graph)
 
     # Compute optimal match
     (_, optimal_match) = optimize_subgraph_connectivity(contribution_graph,

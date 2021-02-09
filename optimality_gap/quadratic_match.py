@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 
 
-def aggregate_contributions(grant_contributions):
+def aggregate_contributions(grant_contributions: list) -> dict:
     contrib_dict = {}
     for contrib in grant_contributions:
         contrib_tuple = tuple(*contrib.values())
@@ -15,7 +15,7 @@ def aggregate_contributions(grant_contributions):
     return contrib_dict
 
 
-def get_totals_by_pair(contrib_dict):
+def get_totals_by_pair(contrib_dict: dict) -> dict:
     tot_overlap = {}
 
     # start pairwise match
@@ -33,13 +33,13 @@ def get_totals_by_pair(contrib_dict):
     return tot_overlap
 
 
-def match_project(contribz, pair_totals, threshold):
-    proj_total = 0
+def match_project(contribz: dict, pair_totals: dict, threshold: float) -> float:
+    proj_total: float = 0
     for k1, v1 in contribz.items():
         for k2, v2 in contribz.items():
             if k2 > k1:
                 # quadratic formula
-                p = pair_totals[k1][k2]
+                p: float = pair_totals[k1][k2]
                 if p == 0:
                     continue
                 else:

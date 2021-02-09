@@ -8,6 +8,15 @@ from networkx.algorithms.rewiring import simulated_annealing_optimize
 
 
 def subgraph_rewire(G: nx.Graph, nodes: set, seed=None) -> Tuple[nx.Graph, nx.Graph]:
+    """
+    Rewire a graph with rewiring restricted to a subgraph of it.
+
+    Arguments
+    ---
+    G: NetworkX graph
+    nodes: Set of nodes that makes the subgraph
+    seed: random seed
+    """
     r = random.Random(seed)
 
     subgraph = G.subgraph(nodes)
@@ -36,6 +45,18 @@ def subgraph_rewire(G: nx.Graph, nodes: set, seed=None) -> Tuple[nx.Graph, nx.Gr
 def optimize_subgraph_connectivity(graph: nx.Graph,
                                    nodes: set,
                                    utility_function: Callable[[nx.Graph], float]) -> Tuple[nx.Graph, float]:
+    """
+    Optimize graph with the rewire operations restricted to the nodes 
+    given as arguments.
+
+    Arguments
+    ---
+    graph: NetworkX graph
+    nodes: Set
+        Nodes contained on `graph`
+    utility_function: Function
+        It takes a graph and returns a real number. Higher values are more optimal.
+    """
 
     best_score = utility_function(graph)
     best_subgraph = graph.subgraph(nodes)
