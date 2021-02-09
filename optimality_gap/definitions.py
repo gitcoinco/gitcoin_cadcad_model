@@ -5,6 +5,7 @@ from typing import Dict, Tuple, List
 from tqdm.auto import tqdm
 import networkx as nx
 import numpy as np
+from pathos.multiprocessing import ProcessingPool
 
 
 def robust_shortest_path_length(*args, **kwargs) -> float:
@@ -85,9 +86,15 @@ def optimality_gap_per_grant(contribution_graph: nx.Graph) -> Dict[str, float]:
         if data["type"] == "grant"
     }
 
-    optimality_gap_per_grant = {grant: grant_optimality_gap(contribution_graph, grant)
-                                for grant
-                                in tqdm(grants, desc="Calculating Optimality Gap")}
+    def f(g): return grant_optimality_gap(contribution_graph, g)
+
+    with ProcessingPool() as pool:
+        grants_list = list(grants)
+        iterator = tqdm(pool.imap(f, grants_list),
+                        desc="Calculating Optimality Gap",
+                        total=len(grants_list))
+        grants_values = list(iterator)
+        optimality_gap_per_grant = dict(zip(grants_list, grants_values))
 
     return optimality_gap_per_grant
 
@@ -104,6 +111,6 @@ def amount_per_grant(contribution_graph: nx.Graph) -> Dict[str, float]:
     }
 
     amount_per_grant = {grant: total_amount(contribution_graph, grant)
-                                for grant in grants}
+                        for grant in grants}
 
     return amount_per_grant
