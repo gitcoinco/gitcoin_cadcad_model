@@ -2,7 +2,7 @@ pandas>=0.25.3
 numpy>=1.19.5
 cadCAD>=0.4.22
 plotly>=4.8.2
-networkx>=2.5
+networkx @ git+https://github.com/danlessa/networkx.git@ccf4b9439ff8e3c9abdcc5ad6c6e33c5bdbf4cac
 matplotlib>=3.3.3
 opencv-python>=4.4.0.46
 cloudpickle>=1.6.0
