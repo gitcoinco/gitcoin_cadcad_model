@@ -6,12 +6,15 @@ import json
 from cape_privacy.pandas import transformations as tfms
 
 
-def parse_grants_data(input_path: str, output_csv_path: str=None) -> pd.DataFrame:
+def parse_contributions_data(input_path: str, output_csv_path: str=None) -> pd.DataFrame:
     """
     Clean the Gitcoin Rounds data for privacy and 
     ease of the use in the simulation.
     """
-    raw_df = pd.read_csv(input_path)
+    if '.json' in input_path:
+        raw_df = pd.read_json(input_path)
+    else:
+        raw_df = pd.read_csv(input_path)
 
     # Parse the normalized data strings into dictionaries
     json_data: dict = raw_df.normalized_data.map(json.loads)
@@ -47,7 +50,8 @@ def parse_grants_data(input_path: str, output_csv_path: str=None) -> pd.DataFram
     sorted_df = df.sort_values('created_on')
 
     # Columns which are to keep into the dynamical network
-    event_property_map = {'originated_address': 'contributor',
+    event_property_map = {'created_on': 'created_on',
+                          'originated_address': 'contributor',
                           'title': 'grant',
                           'amount_per_period_usdt': 'amount'}
 
@@ -77,7 +81,7 @@ def main(src, dst):
     if src is None or dst is None:
         print("Paths must be provided in order to continue")
     else:
-        parse_grants_data(src, dst)
+        parse_contributions_data(src, dst)
 
 
 if __name__ == '__main__':
@@ -85,5 +89,5 @@ if __name__ == '__main__':
 # %%
 import json
 path = 'contributions_2021-02-24T16_51_25.595Z.json'
-df = pd.read_json(path)
+parse_contributions_data(path, 'data/2021-02-24-contributions.csv.xz')
 # %%
