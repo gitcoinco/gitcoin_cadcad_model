@@ -1,6 +1,6 @@
-from optimality_gap.quadratic_match import partial_quadratic_match
-from optimality_gap.functions import total_amount
-from optimality_gap.subgraph_optimizer import optimize_subgraph_connectivity
+from qf_research.quadratic_match import partial_quadratic_match
+from qf_research.functions import total_amount
+from qf_research.subgraph_optimizer import optimize_subgraph_connectivity
 from typing import Dict, Tuple, List
 from tqdm.auto import tqdm
 import networkx as nx
