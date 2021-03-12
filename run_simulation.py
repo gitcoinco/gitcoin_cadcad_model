@@ -20,7 +20,7 @@ def main(n: str, compute_qf: str):
         os.environ[key] = value
 
     print("Preparing simulation")
-    from model.run import run
+    from model_gitcoin.run import run
     print("Run simuation")
     result = run()
 
