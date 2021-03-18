@@ -1,4 +1,4 @@
-from qf_research.quadratic_match import partial_quadratic_match
+from qf_research.quadratic_match import partial_quadratic_match, quadratic_match, total_quadratic_match
 from qf_research.functions import total_amount
 from qf_research.subgraph_optimizer import optimize_subgraph_connectivity
 from typing import Dict, Tuple, List
@@ -45,6 +45,62 @@ THRESHOLD = 0.3  # need to check it up
 
 def partial_utility_function(graph, nodes):
     return partial_quadratic_match(graph, nodes, THRESHOLD)
+
+
+def get_users(G):
+    users: set = {
+        node
+        for (node, data) in G.nodes(data=True)
+        if data["type"] == "contributor"
+    }
+    return users
+
+
+def get_grants(G):
+    grants: set = {
+        node
+        for (node, data) in G.nodes(data=True)
+        if data["type"] == "grant"
+    }
+    return grants
+
+
+def grants_funding_share(G: nx.Graph,
+                        threshold: float,
+                        simple=False) -> Dict[str, float]:
+    match_per_grant = quadratic_match(G, threshold, simple=simple)
+    total_match = sum(match_per_grant.values())
+    return {grant: match_per_grant[grant] / total_match
+            for grant in match_per_grant.keys()}
+
+
+def grant_conjuctured_optimality_gap(G: nx.Graph,
+                                     grant: str) -> float:
+    subgraph = NeighborsSubgraph(G, grant)
+    grants = get_grants(subgraph)
+    users = get_users(subgraph)
+
+    N_users = len(users)
+    budget = sum(subgraph.edges[e]['amount'] 
+                 for e 
+                 in subgraph.edges)
+    optimal_value = N_users * (N_users - 1) * budget
+    optimal_value /= 2 * (N_users + budget)
+    assert optimal_value >= 0
+
+
+    real_value = partial_quadratic_match(G, grants, 1)
+    assert real_value >= 0
+
+    if optimal_value == 0:
+        optimality_gap = np.nan 
+    else:
+        optimality_gap = (1 - real_value / optimal_value)
+
+    assert optimal_value >= real_value, (optimal_value, real_value, grant)
+
+    return optimality_gap
+
 
 
 def grant_optimality_gap(contribution_graph: nx.Graph,

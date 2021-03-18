@@ -47,7 +47,17 @@ def match_project(contribz: dict, pair_totals: dict, threshold: float) -> float:
     return np.real(proj_total)
 
 
-def quadratic_match(G: nx.Graph, threshold: float) -> dict:
+def simple_match_project(contribz: dict, threshold: float) -> float:
+    proj_total: float = 0
+    for k1, v1 in contribz.items():
+        for k2, v2 in contribz.items():
+            if k2 > k1:
+                # quadratic formula
+                proj_total += (threshold + 1) * ((v1 * v2) ** 0.5) 
+    return np.real(proj_total)
+
+
+def quadratic_match(G: nx.Graph, threshold: float, simple=False) -> dict:
     G = G.copy()
     raw_contributions = G.edges(data=True)
 
@@ -67,11 +77,18 @@ def quadratic_match(G: nx.Graph, threshold: float) -> dict:
         contributions.append(element)
 
     contrib_dict = aggregate_contributions(contributions)
-    pair_totals = get_totals_by_pair(contrib_dict)
-    matches = {
-        proj: match_project(contribz, pair_totals, threshold)
-        for proj, contribz in contrib_dict.items()
-    }
+
+    if simple is False:
+        pair_totals = get_totals_by_pair(contrib_dict)
+        matches = {
+            proj: match_project(contribz, pair_totals, threshold)
+            for proj, contribz in contrib_dict.items()
+        }
+    else:
+        matches = {
+            proj: simple_match_project(contribz, threshold)
+            for proj, contribz in contrib_dict.items()
+        }
     return matches
 
 
