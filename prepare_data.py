@@ -53,7 +53,9 @@ def parse_contributions_data(input_path: str, output_csv_path: str=None) -> pd.D
     event_property_map = {'created_on': 'created_on',
                           'originated_address': 'contributor',
                           'title': 'grant',
-                          'amount_per_period_usdt': 'amount'}
+                          'amount_per_period_usdt': 'amount',
+                          'sybil_score': 'sybil_score',
+                          'success': 'success'}
 
     # Prepare tokenizer
     tokenize_contributor = tfms.Tokenizer(max_token_len=10)
@@ -86,8 +88,4 @@ def main(src, dst):
 
 if __name__ == '__main__':
     main()
-# %%
-import json
-path = 'contributions_2021-02-24T16_51_25.595Z.json'
-parse_contributions_data(path, 'data/2021-02-24-contributions.csv.xz')
-# %%
+
