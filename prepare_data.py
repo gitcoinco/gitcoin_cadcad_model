@@ -1,15 +1,20 @@
+
+# %%
 import click
 import pandas as pd
 import json
 from cape_privacy.pandas import transformations as tfms
 
 
-def parse_grants_data(input_csv_path: str, output_csv_path: str=None) -> pd.DataFrame:
+def parse_contributions_data(input_path: str, output_csv_path: str=None) -> pd.DataFrame:
     """
     Clean the Gitcoin Rounds data for privacy and 
     ease of the use in the simulation.
     """
-    raw_df = pd.read_csv(input_csv_path)
+    if '.json' in input_path:
+        raw_df = pd.read_json(input_path)
+    else:
+        raw_df = pd.read_csv(input_path)
 
     # Parse the normalized data strings into dictionaries
     json_data: dict = raw_df.normalized_data.map(json.loads)
@@ -45,9 +50,12 @@ def parse_grants_data(input_csv_path: str, output_csv_path: str=None) -> pd.Data
     sorted_df = df.sort_values('created_on')
 
     # Columns which are to keep into the dynamical network
-    event_property_map = {'originated_address': 'contributor',
+    event_property_map = {'created_on': 'created_on',
+                          'originated_address': 'contributor',
                           'title': 'grant',
-                          'amount_per_period_usdt': 'amount'}
+                          'amount_per_period_usdt': 'amount',
+                          'sybil_score': 'sybil_score',
+                          'success': 'success'}
 
     # Prepare tokenizer
     tokenize_contributor = tfms.Tokenizer(max_token_len=10)
@@ -67,6 +75,7 @@ def parse_grants_data(input_csv_path: str, output_csv_path: str=None) -> pd.Data
         
     return event_df
 
+# %%
 @click.command()
 @click.option('--src', default=None, help='Path for the input raw data (eg. raw_data/gc_round_7.csv)')
 @click.option('--dst', default=None, help='Path for the output clean data: (eg. model/data/OUTPUT.csv.xz)')
@@ -74,8 +83,9 @@ def main(src, dst):
     if src is None or dst is None:
         print("Paths must be provided in order to continue")
     else:
-        parse_grants_data(src, dst)
+        parse_contributions_data(src, dst)
 
 
 if __name__ == '__main__':
     main()
+

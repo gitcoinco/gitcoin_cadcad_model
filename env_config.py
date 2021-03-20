@@ -1,6 +1,6 @@
 import os
 
-PICKLE_PATH = "model/data/simulation_result.pkl.gz"
+PICKLE_PATH = "data/model_results/simulation_result.pkl.gz"
 
 RUN_PARAMS = {}
 
