@@ -1,10 +1,11 @@
 import networkx as nx
-from networkx.algorithms.rewiring.meta_heuristics import hill_climb_optimize
 import numpy as np
 import random
 from typing import Callable, List, Tuple, Callable
 from tqdm.auto import tqdm
-from networkx.algorithms.rewiring import simulated_annealing_optimize
+
+from qf_research.meta_heuristics import hill_climb_optimize
+from qf_research.meta_heuristics import simulated_annealing_optimize
 
 
 def subgraph_rewire(G: nx.Graph, nodes: set, seed=None) -> Tuple[nx.Graph, nx.Graph]:
