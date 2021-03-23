@@ -48,6 +48,7 @@ def parse_contributions_data(input_path: str, output_csv_path: str=None) -> pd.D
 
     # Sort df and return dict
     sorted_df = df.sort_values('created_on')
+    print(sorted_df.columns)
 
     # Columns which are to keep into the dynamical network
     event_property_map = {'created_on': 'created_on',
@@ -55,6 +56,8 @@ def parse_contributions_data(input_path: str, output_csv_path: str=None) -> pd.D
                           'title': 'grant',
                           'amount_per_period_usdt': 'amount',
                           'sybil_score': 'sybil_score',
+                          'token_symbol': 'token',
+                          'amount_per_period': 'amount_in_token',
                           'success': 'success'}
 
     # Prepare tokenizer
