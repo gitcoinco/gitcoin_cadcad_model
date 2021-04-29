@@ -17,19 +17,24 @@ def robust_shortest_path_length(*args, **kwargs) -> float:
 
 
 def NeighborsSubgraph(contribution_graph: nx.Graph, grant: str) -> nx.Graph:
-    """"""
-    source = grant
-    distances_to_source = {
-        target: robust_shortest_path_length(contribution_graph, source, target)
-        for target in contribution_graph.nodes
-    }
+    """
+    This function takes in a graph of contributions (contribution_graph) and a 
+    grant that corresponds to a vertex within the contribution graph.
+    Using this information, the function finds all neighbors within distance 3
+    of the grant. 
 
-    neighbors = [
-        node for (node, distance) in distances_to_source.items() if distance <= 3
-    ]
+    :param contribution_graph: A bipartite graph of contributors and the projects
+    they are contributing to.
 
-    neighbors_subgraph = contribution_graph.subgraph(neighbors)
-    return neighbors_subgraph
+    :param grant: A grant contained within the contribution graph. Used as the
+    starting vertex.
+
+    :return: A subgraph of contribution_graph containing all vertices within
+    distance 3 of grant. 
+    """
+    
+    return nx.ego_graph(contribution_graph, grant, radius=3)
+
 
 
 """
